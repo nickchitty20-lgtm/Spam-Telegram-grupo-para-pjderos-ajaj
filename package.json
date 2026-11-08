@@ -1,0 +1,12 @@
+{
+  "name": "unete-bb-railway",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Landing sencilla para promocionar un canal o grupo de Telegram",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
