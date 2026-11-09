@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#170c20">
+  <meta name="description" content="Únete a nuestra comunidad en Telegram y participa en retos en vivo">
+  <title>Únete, bb 💗</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <div class="ambient" aria-hidden="true"><div class="orb orb-a"></div><div class="orb orb-b"></div><div class="orb orb-c"></div><div class="stars"></div></div>
+  <div class="overlay" id="overlay" hidden role="dialog" aria-modal="true" aria-label="Invitación de Gabriela">
+    <div class="overlay-card"><div class="superstar">💖</div><div class="eyebrow">INVITACIÓN ESPECIAL</div><strong class="huge">GABRIELA</strong><p id="overlayShout">entra bb 💕</p><div class="overlay-description">Gabriela acaba de enviar un mensaje especial a todos ✨</div><button class="btn ghost" id="closeOverlay">Seguir mirando 💗</button></div>
+  </div>
+  <main class="page">
+    <section class="hero card" id="hero">
+      <div class="hero-top"><span class="pill">💌 Invitación especial</span><span class="live-dot">EN VIVO</span></div>
+      <div class="heart">💗</div><h1>Únete, bb <span>💕</span></h1>
+      <p>Te esperamos en <strong id="communityName">nuestra comunidad</strong>. Entra, conversa y diviértete por aquí 👀</p>
+      <a class="btn cta" id="telegramButton" aria-disabled="true" tabindex="-1"><span class="telegram-plane">✈</span><span id="ctaLabel">Cargando enlace...</span></a>
+      <div class="link-state" id="linkStatus">Comprobando invitación...</div>
+      <div class="tiny">El botón abre Telegram cuando está habilitado ✨</div>
+    </section>
+
+    <section class="card challenge" aria-label="Reto en vivo">
+      <div class="section-head"><div><span class="overline">MINIJUEGOS</span><h2>🎮 Reto en vivo</h2></div><span class="mini-pill" id="challengeBadge">En espera</span></div>
+      <p class="hint" id="challengeIntro">Gabriela puede activar un reto cuando haya al menos 7 personas con nick conectado.</p>
+      <div class="challenge-live" id="challengeLive" hidden>
+        <div class="challenge-title" id="challengeTitle">Reto</div>
+        <div class="roundline"><span id="challengePhase">Esperando jugadores...</span><span id="challengeTimer" class="timer">—</span></div>
+        <p class="challenge-note" id="challengeNote"></p>
+        <div class="action-wrap">
+          <button class="btn participant" id="joinChallenge" hidden>🙋 Participar en este reto</button>
+          <button class="btn participant play" id="playChallenge" hidden>⚡ ¡TOCA YA!</button>
+          <div class="participation-label" id="participationLabel"></div>
+        </div>
+        <div class="scores-head"><span>Participantes y puntuación</span><span id="scoreCount">0/7</span></div>
+        <div class="scoreboard" id="scoreboard"></div>
+      </div>
+      <div class="small-foot">El reto, los clasificados y el ganador se muestran públicamente en tiempo real.</div>
+    </section>
+
+    <section class="card chat" aria-label="Chat público">
+      <div class="section-head"><div><span class="overline">CONVERSACIÓN</span><h2 id="chatTitle">💬 Chat en vivo</h2></div><div class="online" id="presence" title="Navegadores conectados"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg><b id="onlineNum">—</b><span>en línea</span></div></div>
+      <div class="notice"><b>📌 Mensaje destacado</b><p id="chatWelcome">¡Únete al Telegram, bb!</p><a href="/join" id="noticeJoin" target="_blank" rel="noopener noreferrer" hidden>Entrar al grupo ↗</a></div>
+      <div class="admin" id="adminPanel" hidden>
+        <div class="admin-heading">👑 Panel de Gabriela <span>PRIVADO</span></div>
+        <button class="btn magic" id="epicButton">💖 Lanzar entrada épica para todos</button>
+        <div class="admin-section">
+          <strong>🔗 Control general del enlace</strong>
+          <div class="admin-line"><span id="globalLinkLabel">Estado: ...</span><button class="btn sm" id="globalToggle">Cambiar</button></div>
+        </div>
+        <div class="admin-section">
+          <strong>🎯 Elegir quién puede entrar</strong>
+          <p>Selecciona un nick conectado: solo esa persona recibirá o perderá acceso.</p>
+          <select id="targetNick" aria-label="Elegir nick conectado"><option value="">Elige un nick...</option></select>
+          <div class="two-buttons"><button class="btn allow" id="allowNick">🔓 Habilitar a este nick</button><button class="btn deny" id="denyNick">🔒 Deshabilitar</button></div>
+          <small id="linkModeLabel"></small>
+        </div>
+        <div class="admin-section">
+          <strong>🏆 Organizar concurso</strong>
+          <p id="registeredLabel">Registrados conectados: 0/7</p>
+          <div class="games"><button class="btn game" data-challenge="first">⚡ Primer clic</button><button class="btn game" data-challenge="taps">🔥 Toques 10s</button><button class="btn game" data-challenge="knockout">🏆 Eliminatoria</button></div>
+          <div class="two-buttons"><button class="btn allow" id="startChallenge">▶️ Iniciar ronda</button><button class="btn deny" id="cancelChallenge">✖ Cancelar reto</button></div>
+          <small>Primero elige un modo, deja que se inscriban 7 o más jugadores y pulsa iniciar.</small>
+        </div>
+      </div>
+      <div class="messages" id="messages" role="log" aria-live="polite"><div class="empty" id="empty">💬 No hay mensajes todavía<br>¡Sé el primero en saludar!</div></div>
+      <div class="entry">
+        <form id="nickForm" autocomplete="off">
+          <p>Sin cuenta ni contraseña para visitantes. Elige tu nick 👇</p>
+          <div class="field-row"><input id="nickInput" placeholder="Tu nick (2–22 caracteres)" minlength="2" maxlength="22" required aria-label="Tu nick"><button class="btn sm" type="submit" id="nickButton">Entrar 💗</button></div>
+          <div id="pinRow" hidden><input type="password" id="adminPin" placeholder="PIN de Gabriela (si está configurado)" aria-label="PIN de Gabriela" autocomplete="off"></div>
+        </form>
+        <form id="messageForm" autocomplete="off" hidden>
+          <div class="field-row"><input id="messageInput" placeholder="Escribe algo bonito..." maxlength="240" required aria-label="Tu mensaje"><button class="btn sm" type="submit" id="sendButton">Enviar</button></div>
+          <div class="nick-foot"><span>Escribiendo como <b id="myNick"></b></span><button type="button" id="changeNick">Cambiar nick</button></div>
+        </form>
+        <div class="feedback" id="feedback" role="status"></div>
+      </div>
+    </section>
+    <footer>Hecho para compartir, reír y conversar 💗</footer>
+  </main>
+</body>
+</html>

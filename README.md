@@ -1,43 +1,46 @@
-# Únete BB v5.0 — Railway
+# Únete BB v6 — Telegram + Chat + Retos en vivo
 
-Página de promoción de Telegram con chat en vivo, nick sin registro, contador de visitantes, fondo animado y **modo Gabriela**.
+Proyecto Node.js sin dependencias externas. Solo una instancia/réplica de Railway. El chat, nick, contadores, permisos y retos viven en memoria: se reinician cuando Railway reinicia o redespliega el servicio.
 
-## Cambios de esta versión
+## Configuración Railway → Variables
 
-- Gabriela dispone de los botones **🔒 Deshabilitar enlace** y **🔓 Habilitar enlace** dentro del chat.
-- Los cambios llegan al instante a todos los navegadores conectados mediante eventos en vivo (Server-Sent Events).
-- Mientras el enlace está deshabilitado, el botón principal se desactiva, desaparece el enlace de invitación en el chat y también se bloquea el acceso a `/join` en el servidor.
-- Solo la sesión que tiene reservado el nick `Gabriela` puede activar el botón de la animación épica y cambiar el estado del enlace.
-- Si se libera `Gabriela` o se desconecta el último navegador de esa sesión, el nick queda disponible para otra persona.
-- El resto del chat sigue funcionando aunque el enlace de Telegram esté deshabilitado.
+| Variable | Ejemplo | Uso |
+|---|---|---|
+| `TELEGRAM_NAME` | `Zona Femenina 💕` | Nombre del grupo |
+| `TELEGRAM_LINK` | `https://t.me/tu_grupo` | Destino del enlace |
+| `BUTTON_TEXT` | `Entra, bb 😘` | Texto del botón |
+| `CHAT_TITLE` | `Chat en vivo 💬` | Título del chat |
+| `CHAT_WELCOME` | `Ven al grupo, bb 💗` | Mensaje fijado |
+| `GABRIELA_SHOUT` | `entra bb 💕` | Texto de la animación épica |
+| `GABRIELA_PIN` | `tu_PIN_largo_y_privado` | Protege que alguien suplante a Gabriela. **Recomendado**. |
+| `LINK_ENABLED` | `true` | Enlace activado globalmente al arrancar |
+| `LINK_MODE` | `exclusive` | `exclusive`: botón deshabilitado salvo a nicks que Gabriela autoriza; `public`: botón habilitado para todos menos los que Gabriela bloquee |
 
-## Variables en Railway
+El nombre `Gabriela` (sin importar mayúsculas y minúsculas) está reservado a una sola sesión. Cualquier otro nick también es exclusivo mientras esté conectado. Si defines `GABRIELA_PIN`, el servidor exige el PIN para reclamar Gabriela y nunca lo guarda en el navegador ni lo muestra en HTML.
 
-| Variable | Ejemplo | Obligatoria |
-| --- | --- | --- |
-| `TELEGRAM_NAME` | `Zona Femenina 💗` | Recomendada |
-| `TELEGRAM_LINK` | `https://t.me/TuGrupo` | Sí, para habilitar el botón |
-| `BUTTON_TEXT` | `Entra, bb 😈💗` | No |
-| `CHAT_TITLE` | `Chat en vivo 💬` | No |
-| `CHAT_WELCOME` | `Únete a nuestro grupo 💕` | No |
-| `GABRIELA_SHOUT` | `entra bb 💕` | No |
-| `LINK_ENABLED` | `true` o `false` | No, por defecto `true` |
+## Controles de Gabriela
 
-`LINK_ENABLED` controla el estado **inicial** al arrancar. Gabriela puede cambiarlo cuando el sitio está funcionando.
+- Enviar animación global `GABRIELA — entra bb 💕`.
+- Encender o apagar el enlace global para todos.
+- Seleccionar un nick conectado y habilitar o bloquear **solo a ese visitante**. El botón `/join` también valida el permiso en servidor. Si una persona ya conoce la URL de Telegram, no es posible impedir que acceda directamente a Telegram.
+- Activar tres retos: **primer clic** (el servidor recibe el primero), **toques en 10 segundos** (ranking actualizado) y **eliminatoria** (en cada ronda pasan los mejores 50%).
+- Los retos se abren con 7 nicks conectados y comienzan con 7 participantes voluntariamente inscritos. Todos ven inscripciones, rondas, puntuaciones, eliminados y ganador. El reto y el panel están disponibles solo para usuarios con nick registrado; el control es exclusivo de Gabriela.
 
 ## Despliegue
 
-1. Descomprime este ZIP y sube los archivos a tu repositorio de GitHub.
-2. Vincula el repositorio a Railway y crea un servicio Node.js.
-3. Establece las variables de entorno.
-4. Inicia con `npm start` (Railway puede detectarlo automáticamente).
-5. Abre el dominio que Railway genera para tu servicio.
+1. Sube los archivos a un repositorio GitHub.
+2. Crea un servicio en Railway desde ese repositorio.
+3. Añade tus variables, en particular `TELEGRAM_LINK` y **`GABRIELA_PIN`**.
+4. Railway iniciará usando `npm start`; en Settings → Networking genera un dominio público.
+5. Mantén **una sola réplica**. Para múltiples réplicas o persistencia necesitarías Redis/DB y sincronización.
 
-Para probar en tu equipo: `npm start` y después abre http://localhost:3000.
+## Ejecutar local
 
-## Límites a tener en cuenta
+```sh
+npm install
+npm start
+```
 
-- **Sin inicio de sesión**, cualquier persona que tome primero el nick `Gabriela` podrá usar esos controles. Esto no verifica la identidad real de Gabriela. Si necesitas que solo una persona concreta lo pueda usar, conviene añadir un PIN privado.
-- El chat, el contador y el estado activado/desactivado se guardan solo en memoria. Al reiniciar o redesplegar Railway se borran los mensajes y el estado del enlace vuelve a lo configurado por `LINK_ENABLED`.
-- Usa **una sola réplica de Railway** para mantener el chat y los controles sincronizados sin base de datos.
-- El contador representa navegadores conectados aproximadamente, no garantiza individuos únicos.
+Abre http://localhost:3000
+
+**Nota de privacidad y seguridad:** Los nicks no son cuentas de usuario, por lo que no demuestran identidad fuera de la sesión activa. Un PIN para Gabriela evita que el primer visitante que use ese nick obtenga poderes administrativos. El contador mide navegadores conectados, no necesariamente personas únicas. El sitio evita mostrar la URL de Telegram a un usuario sin permiso, pero no puede revocar un enlace de Telegram que ya se haya conocido.

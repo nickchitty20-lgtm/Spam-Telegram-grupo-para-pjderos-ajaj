@@ -1,13 +1,8 @@
 {
-  "name": "unete-bb-railway",
-  "version": "5.0.0",
+  "name": "unete-bb-telegram",
+  "version": "6.0.0",
   "private": true,
-  "description": "Página de Telegram con chat en vivo, Gabriela y control del enlace",
-  "scripts": {
-    "start": "node server.js",
-    "test": "node --check server.js"
-  },
-  "engines": {
-    "node": ">=18"
-  }
+  "description": "Landing Telegram, chat y retos en vivo con permisos por nick",
+  "scripts": {"start":"node server.js", "test":"node --check server.js && node --check public/app.js"},
+  "engines": {"node": ">=18"}
 }
