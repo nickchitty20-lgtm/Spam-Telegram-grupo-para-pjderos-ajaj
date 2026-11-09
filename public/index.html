@@ -6,8 +6,8 @@
   <meta name="theme-color" content="#170c20">
   <meta name="description" content="Únete a nuestra comunidad en Telegram y participa en retos en vivo">
   <title>Únete, bb 💗</title>
-  <link rel="stylesheet" href="/style.css?v=6.3.0">
-  <script src="/app.js?v=6.3.0" defer></script>
+  <link rel="stylesheet" href="/style.css?v=6.5.0">
+  <script src="/app.js?v=6.5.0" defer></script>
 </head>
 <body>
   <div class="ambient" aria-hidden="true"><div class="orb orb-a"></div><div class="orb orb-b"></div><div class="orb orb-c"></div><div class="stars"></div></div>
@@ -31,6 +31,15 @@
         <div class="challenge-title" id="challengeTitle">Reto</div>
         <div class="roundline"><span id="challengePhase">Esperando jugadores...</span><span id="challengeTimer" class="timer">—</span></div>
         <p class="challenge-note" id="challengeNote"></p>
+        <div class="quiz-area" id="quizArea" hidden>
+          <div class="quiz-question" id="quizQuestion"></div>
+          <div class="quiz-choices" id="quizChoices" hidden></div>
+          <form id="quizForm" class="quiz-form" hidden autocomplete="off">
+            <input id="quizInput" maxlength="80" aria-label="Respuesta del concurso" placeholder="Tu respuesta..." autocomplete="off">
+            <button type="submit" class="btn quiz-submit" id="quizSubmit">Responder ✨</button>
+          </form>
+          <p id="quizFeedback" class="quiz-feedback" aria-live="polite"></p>
+        </div>
         <div class="action-wrap">
           <button class="btn participant" id="joinChallenge" hidden>🙋 Participar en este reto</button>
           <button class="btn participant play" id="playChallenge" hidden>⚡ ¡TOCA YA!</button>
@@ -71,12 +80,13 @@
         <div class="admin-section">
           <strong>🏆 Organizar concurso</strong>
           <p id="registeredLabel">Registrados conectados: 0/3</p>
-          <div class="games"><button class="btn game" data-challenge="first">⚡ Primer clic</button><button class="btn game" data-challenge="taps">🔥 Toques 10s</button><button class="btn game" data-challenge="knockout">🏆 Eliminatoria</button></div>
+          <div class="games"><button class="btn game" data-challenge="first">⚡ Primer clic</button><button class="btn game" data-challenge="taps">🔥 Toques 10s</button><button class="btn game" data-challenge="knockout">🏆 Eliminatoria</button><button class="btn game" data-challenge="trivia">🧠 Preguntas</button><button class="btn game" data-challenge="math">🔢 Matemáticas</button><button class="btn game" data-challenge="scramble">🔤 Palabra revuelta</button><button class="btn game" data-challenge="riddle">🕵️ Adivinanzas</button></div>
           <div class="two-buttons"><button class="btn allow" id="startChallenge">▶️ Iniciar ronda</button><button class="btn deny" id="cancelChallenge">✖ Cancelar reto</button></div>
-          <small>Primero elige un modo, deja que se inscriban 3 o más jugadores y pulsa iniciar.</small>
+          <small>Elige un reto, espera a que haya al menos 3 inscritos y pulsa iniciar. Los nuevos concursos tienen 3 rondas y 1 respuesta por participante en cada ronda.</small>
         </div>
       </div>
       <div class="messages" id="messages" role="log" aria-live="polite"><div class="empty" id="empty">💬 No hay mensajes todavía<br>¡Sé el primero en saludar!</div></div>
+      <div class="typing-indicator" id="typingIndicator" role="status" aria-live="polite" hidden><span class="typing-dots" aria-hidden="true"><i></i><i></i><i></i></span><span id="typingText"></span></div>
       <div class="entry">
         <form id="nickForm" autocomplete="off">
           <p>Sin cuenta ni contraseña para visitantes. Elige tu nick 👇</p>

@@ -53,7 +53,7 @@ function makeSession(req,res) {
   const existing = getSession(req);
   if (existing) return existing;
   const id = crypto.randomBytes(24).toString('hex');
-  const s = {id, nick:'', connections:0, clients:new Set(), disconnectTimer:null, lastSeen:Date.now(), lastMessage:0, lastTap:0};
+  const s = {id, nick:'', connections:0, clients:new Set(), disconnectTimer:null, lastSeen:Date.now(), lastMessage:0, lastTap:0, typingUntil:0, lastTypingSignal:0};
   sessions.set(id,s);
   const secure = String(req.headers['x-forwarded-proto']||'').split(',')[0].trim()==='https';
   res.setHeader('Set-Cookie', `bb_sid=${id}; Path=/; HttpOnly; SameSite=Lax; Max-Age=86400${secure?'; Secure':''}`);
@@ -94,6 +94,7 @@ function releaseNick(s) {
   if(!s.nick) return;
   if(nickOwners.get(key(s.nick))===s.id) nickOwners.delete(key(s.nick));
   if(adminOwner===s.id) adminOwner=null;
+  s.typingUntil=0;sendTyping();
   s.nick='';
   if(contest && contest.players.has(s.id)) {
     const p=contest.players.get(s.id);
@@ -119,20 +120,113 @@ function claim(s,body) {
 }
 function clearContestTimers() { for(const timer of contestTimers) clearTimeout(timer); contestTimers.clear(); if(stateSendTimer) clearTimeout(stateSendTimer); stateSendTimer=null; }
 function later(fn,ms) { const timer=setTimeout(()=>{ contestTimers.delete(timer);fn(); },ms); contestTimers.add(timer); }
-const typeNames={first:'⚡ El primero en tocar',taps:'🔥 Carrera de toques',knockout:'🏆 Eliminatoria'};
+const typeNames={
+  first:'⚡ El primero en tocar', taps:'🔥 Carrera de toques', knockout:'🏆 Eliminatoria',
+  trivia:'🧠 Preguntas relámpago', math:'🔢 Cálculo exprés', scramble:'🔤 Palabras revueltas', riddle:'🕵️ Adivinanzas'
+};
+const quizTypes=new Set(['trivia','math','scramble','riddle']);
+const TOTAL_QUIZ_ROUNDS=3;
+const QUIZ_ROUND_MS=16000;
+const quizPools={
+  trivia:[
+    {prompt:'¿Cuál es el planeta rojo?',options:['Marte','Venus','Júpiter','Saturno'],answers:['Marte']},
+    {prompt:'¿Cuántos lados tiene un hexágono?',options:['5','6','7','8'],answers:['6']},
+    {prompt:'¿Qué animal es el más grande del mundo?',options:['Elefante','Ballena azul','Jirafa','Tiburón blanco'],answers:['Ballena azul']},
+    {prompt:'¿Qué océano está junto a la costa de Perú?',options:['Atlántico','Índico','Ártico','Pacífico'],answers:['Pacífico']},
+    {prompt:'¿Qué instrumento tiene teclas blancas y negras?',options:['Flauta','Piano','Tambor','Violín'],answers:['Piano']},
+    {prompt:'¿Cuál es el resultado de 9 × 9?',options:['72','81','99','90'],answers:['81']},
+    {prompt:'¿Qué gas necesitamos respirar?',options:['Oxígeno','Helio','Hidrógeno','Neón'],answers:['Oxígeno']},
+    {prompt:'¿Cuál de estos animales pone huevos?',options:['Gato','Delfín','Gallina','Perro'],answers:['Gallina']},
+    {prompt:'¿En qué continente se encuentra Egipto?',options:['América','Asia','África','Europa'],answers:['África']},
+    {prompt:'¿Cuál es la capital de Japón?',options:['Osaka','Tokio','Kioto','Seúl'],answers:['Tokio']}
+  ],
+  scramble:[
+    {word:'TELEGRAM'},{word:'CORAZON'},{word:'VENTANA'},{word:'ESTRELLA'},
+    {word:'MARIPOSA'},{word:'AVENTURA'},{word:'CHOCOLATE'},{word:'AMISTAD'},
+    {word:'SONRISA'},{word:'FANTASMA'},{word:'GIRASOL'},{word:'MISTERIO'}
+  ],
+  riddle:[
+    {prompt:'Tengo agujas y no sé coser, doy las horas sin hablar. ¿Qué soy?',answers:['reloj','un reloj'],reveal:'Reloj'},
+    {prompt:'Blanca por dentro, verde por fuera. Si quieres que te lo diga, espera. ¿Qué es?',answers:['pera','la pera'],reveal:'Pera'},
+    {prompt:'Oro parece, plata no es. ¿Qué fruta es?',answers:['platano','plátano','banana','el platano','el plátano'],reveal:'Plátano'},
+    {prompt:'Tiene dientes pero no come. ¿Qué es?',answers:['peine','un peine','el peine'],reveal:'Peine'},
+    {prompt:'Cuanto más me quitas, más grande me hago. ¿Qué soy?',answers:['agujero','un agujero','hoyo','un hoyo'],reveal:'Agujero'},
+    {prompt:'Siempre sube, nunca baja. ¿Qué es?',answers:['edad','la edad'],reveal:'Edad'},
+    {prompt:'Tiene cuello pero no cabeza, y puede guardar agua. ¿Qué es?',answers:['botella','una botella','la botella'],reveal:'Botella'},
+    {prompt:'Tengo hojas pero no soy árbol. ¿Qué soy?',answers:['libro','un libro','el libro','cuaderno','un cuaderno'],reveal:'Libro'},
+    {prompt:'Te sigo con sol, pero desaparezco en la oscuridad. ¿Qué soy?',answers:['sombra','la sombra','una sombra'],reveal:'Sombra'},
+    {prompt:'Me rompes sin tocarme si no cumples lo dicho. ¿Qué soy?',answers:['promesa','una promesa','la promesa'],reveal:'Promesa'}
+  ]
+};
+function normalizeAnswer(input){
+  return String(input??'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLocaleLowerCase('es').replace(/[^\p{L}\p{N} ]/gu,'').replace(/\s+/g,' ').trim();
+}
+function shuffle(list){
+  const arr=[...list];
+  for(let i=arr.length-1;i>0;i--){const j=crypto.randomInt(i+1);[arr[i],arr[j]]=[arr[j],arr[i]];}
+  return arr;
+}
+function makeQuestions(type){
+  if(type==='math'){
+    return Array.from({length:TOTAL_QUIZ_ROUNDS},()=>{
+      const op=['+','−','×'][crypto.randomInt(3)];
+      let a,b,ans;
+      if(op==='×'){a=crypto.randomInt(3,13);b=crypto.randomInt(2,11);ans=a*b;}
+      else{a=crypto.randomInt(12,71);b=crypto.randomInt(4,34);if(op==='−'&&b>a)[a,b]=[b,a];ans=op==='+'?a+b:a-b;}
+      return {prompt:`¿Cuánto es ${a} ${op} ${b}?`,options:[],answers:[String(ans)],reveal:String(ans)};
+    });
+  }
+  if(type==='scramble'){
+    return shuffle(quizPools.scramble).slice(0,TOTAL_QUIZ_ROUNDS).map(({word})=>{
+      let mixed=word;
+      for(let i=0;i<8&&mixed===word;i++)mixed=shuffle([...word]).join('');
+      if(mixed===word)mixed=word.split('').reverse().join('');
+      return {prompt:`Ordena las letras: ${mixed}`,options:[],answers:[word],reveal:word};
+    });
+  }
+  return shuffle(quizPools[type]).slice(0,TOTAL_QUIZ_ROUNDS).map(q=>({...q,options:q.options?shuffle(q.options):[],reveal:q.reveal||q.answers[0]}));
+}
+function typers(){return [...sessions.values()].filter(s=>online(s)&&s.nick&&s.typingUntil>Date.now()).map(s=>s.nick).sort((a,b)=>a.localeCompare(b,'es'));}
+let lastTypingBroadcast='';
+function sendTyping(force=false){
+  const nicks=typers(),signature=JSON.stringify(nicks);
+  if(force||signature!==lastTypingBroadcast){lastTypingBroadcast=signature;everyone('typing',{nicks});}
+}
+
 function publicContest() {
   if(!contest) return null;
-  return {id:contest.id,type:contest.type,title:typeNames[contest.type],phase:contest.phase,round:contest.round,deadline:contest.deadline,winner:contest.winner||null,note:contest.note||'',minPlayers:MIN_PLAYERS,participants:[...contest.players.values()].map(p=>({nick:p.nick,score:p.score,alive:p.alive,order:p.order})).sort((a,b)=>(b.alive-a.alive)||(b.score-a.score)||(a.order-b.order))};
+  const isQuiz=quizTypes.has(contest.type);
+  const showQuestion=isQuiz && ['active','between','finished'].includes(contest.phase) && contest.question;
+  return {id:contest.id,type:contest.type,title:typeNames[contest.type],phase:contest.phase,round:contest.round,
+    totalRounds:isQuiz?TOTAL_QUIZ_ROUNDS:null,deadline:contest.deadline,winner:contest.winner||null,
+    note:contest.note||'',minPlayers:MIN_PLAYERS,
+    question:showQuestion?{prompt:contest.question.prompt,options:contest.question.options||[],reveal:contest.phase==='active'?null:contest.question.reveal}:null,
+    responded:isQuiz?[...contest.players.values()].filter(p=>p.answeredRound===contest.round).length:0,
+    participants:[...contest.players.values()].map(p=>({nick:p.nick,score:p.score,alive:p.alive,order:p.order,answered:isQuiz&&p.answeredRound===contest.round})).sort((a,b)=>(b.alive-a.alive)||(b.score-a.score)||(a.order-b.order))};
 }
 function sendContest() { everyone('challenge-state',publicContest()); }
 function scheduleContest() { if(!stateSendTimer) stateSendTimer=setTimeout(()=>{stateSendTimer=null;sendContest();},120); }
 function alivePlayers() { return contest ? [...contest.players.values()].filter(p=>p.alive) : []; }
 function finishContest() {
   if(!contest || contest.phase==='finished') return;
-  const alive=alivePlayers().sort((a,b)=>b.score-a.score || a.firstTap-b.firstTap || a.order-b.order);
+  const isQuiz=quizTypes.has(contest.type);
+  const alive=alivePlayers().sort((a,b)=>b.score-a.score || (isQuiz?a.totalResponseMs-b.totalResponseMs:a.firstTap-b.firstTap) || a.order-b.order);
   contest.winner=alive.find(p=>p.score>0)?.nick||null; contest.phase='finished';contest.deadline=0;
-  contest.note=contest.winner ? `🎉 Ganó ${contest.winner}` : 'No hubo ganador';
+  contest.note=contest.winner ? `🎉 Ganó ${contest.winner}${isQuiz?` con ${alive[0].score}/${TOTAL_QUIZ_ROUNDS} aciertos`:''}` : 'No hubo ganador';
   clearContestTimers(); sendContest();
+}
+function completeQuizRound(id,round){
+  if(!contest||contest.id!==id||contest.round!==round||contest.phase!=='active')return;
+  const answer=contest.question?.reveal||'';
+  if(contest.round>=TOTAL_QUIZ_ROUNDS){
+    finishContest();
+    contest.note+=(answer?` · Última respuesta: ${answer}`:'');
+    sendContest();return;
+  }
+  contest.phase='between';contest.deadline=Date.now()+3000;
+  contest.note=`✅ Respuesta correcta: ${answer} · Próxima ronda en...`;
+  sendContest();
+  later(()=>{if(!contest||contest.id!==id||contest.phase!=='between')return;contest.round+=1;beginRound();},3000);
 }
 function beginRound() {
   if(!contest) return;
@@ -142,11 +236,21 @@ function beginRound() {
   later(()=>{
     if(!contest||contest.id!==id) return;
     contest.phase='active';
-    contest.deadline=Date.now()+(contest.type==='first'?15000:10000);
-    contest.note=contest.type==='first'?'¡Toca primero!': '¡Toca tantas veces como puedas!';
-    for(const p of contest.players.values()) if(p.alive){p.score=0;p.firstTap=Number.MAX_SAFE_INTEGER;p.lastTap=0;}
+    const currentRound=contest.round;
+    const quiz=quizTypes.has(contest.type);
+    const time=quiz?QUIZ_ROUND_MS:(contest.type==='first'?15000:10000);
+    contest.deadline=Date.now()+time;
+    contest.startedAt=Date.now();
+    if(quiz){
+      contest.question=contest.quizQuestions[contest.round-1];
+      contest.note=`Pregunta ${contest.round} de ${TOTAL_QUIZ_ROUNDS} · una respuesta por persona`;
+    } else {
+      contest.note=contest.type==='first'?'¡Toca primero!': '¡Toca tantas veces como puedas!';
+      for(const p of contest.players.values()) if(p.alive){p.score=0;p.firstTap=Number.MAX_SAFE_INTEGER;p.lastTap=0;}
+    }
     sendContest();
     later(()=>{if(!contest||contest.id!==id||contest.phase!=='active')return;
+      if(quiz){completeQuizRound(id,currentRound);return;}
       if(contest.type!=='knockout'){finishContest();return;}
       const ranked=alivePlayers().sort((a,b)=>b.score-a.score || a.firstTap-b.firstTap || a.order-b.order);
       const kept=Math.max(1,Math.ceil(ranked.length/2));
@@ -157,7 +261,7 @@ function beginRound() {
       contest.note=removed.length?`Eliminados: ${removed.join(', ')}`:'¡Seguimos!';
       sendContest();
       later(()=>{if(!contest||contest.id!==id)return;contest.round+=1;beginRound();},3500);
-    },contest.type==='first'?15000:10000);
+    },time);
   },3500);
 }
 function removeDisconnectedPlayer(s) {
@@ -167,11 +271,30 @@ function removeDisconnectedPlayer(s) {
   sendContest();
   if(contest.phase==='active'&&alivePlayers().length===1) finishContest();
 }
+function quizAction(s,body){
+  const p=contest.players.get(s.id);
+  if(p.answeredRound===contest.round)return {status:409,error:'Ya respondiste esta ronda. Espera la siguiente 💗'};
+  const answer=clean(body.answer,80);
+  if(!answer)return {status:400,error:'Escribe o selecciona tu respuesta.'};
+  if(contest.type==='trivia'&&!contest.question.options.includes(answer))return {status:400,error:'Elige una de las opciones.'};
+  const now=Date.now();
+  p.answeredRound=contest.round;
+  const correct=contest.question.answers.some(a=>normalizeAnswer(a)===normalizeAnswer(answer));
+  if(correct){p.score+=1;p.totalResponseMs+=now-contest.startedAt;}
+  scheduleContest();
+  if([...contest.players.values()].filter(x=>x.alive).every(x=>x.answeredRound===contest.round)){
+    const id=contest.id;
+    const currentRound=contest.round;
+    later(()=>completeQuizRound(id,currentRound),1200);
+  }
+  return {status:200,ok:true,accepted:true};
+}
 function challengeAction(s,body) {
   if(!contest) return {status:409,error:'Ahora mismo no hay reto.'};
   const p=contest.players.get(s.id);
   if(!s.nick||!online(s)||!p||p.nick!==s.nick||!p.alive) return {status:403,error:'Debes estar inscrito y seguir en juego.'};
   if(contest.phase!=='active'||Date.now()>=contest.deadline)return {status:409,error:'El botón aún no está activo o el tiempo terminó.'};
+  if(quizTypes.has(contest.type)) return quizAction(s,body);
   if(contest.type==='first'){ p.score=1;p.firstTap=Date.now(); contest.winner=p.nick;finishContest();return {status:200,ok:true}; }
   const now=Date.now(); if(now-p.lastTap<95) return {status:200,ok:true,score:p.score};
   p.lastTap=now;p.score+=1;if(p.firstTap===Number.MAX_SAFE_INTEGER)p.firstTap=now;
@@ -183,7 +306,7 @@ function challengeAdmin(s,route,body) {
     if(!typeNames[body.type])return {status:400,error:'Elige un reto válido.'};
     if(registeredCount()<MIN_PLAYERS)return {status:409,error:`Se necesitan ${MIN_PLAYERS} nicks conectados como mínimo.`};
     clearContestTimers();
-    contest={id:crypto.randomUUID(),type:body.type,phase:'signup',round:1,deadline:0,winner:null,note:'Inscripciones abiertas. ¡Pulsa Participar!',players:new Map()};
+    contest={id:crypto.randomUUID(),type:body.type,phase:'signup',round:1,deadline:0,winner:null,note:'Inscripciones abiertas. ¡Pulsa Participar!',players:new Map(),question:null,quizQuestions:quizTypes.has(body.type)?makeQuestions(body.type):[]};
     sendContest();return {status:200,ok:true};
   }
   if(!contest)return {status:409,error:'Aún no se ha creado un reto.'};
@@ -207,12 +330,22 @@ function handlePost(req,res,s,route,body){
     const out=claim(s,body);return msg(res,out.status,out);
   }
   if(route==='/api/nick/release'){releaseNick(s);return msg(res,200,{ok:true});}
+  if(route==='/api/typing'){
+    if(!online(s)||!s.nick)return error(res,403,'Registra tu nick para participar en el chat.');
+    if(typeof body.typing!=='boolean')return error(res,400,'Estado inválido.');
+    const now=Date.now();
+    if(body.typing&&now-s.lastTypingSignal<600)return msg(res,200,{ok:true});
+    s.lastTypingSignal=now;
+    s.typingUntil=body.typing?now+4000:0;
+    sendTyping();return msg(res,200,{ok:true});
+  }
   if(route==='/api/messages'){
     if(!online(s)||!s.nick)return error(res,403,'Primero registra tu nick para escribir.');
     const text=clean(body.text,240);
     if(!text)return error(res,400,'Escribe un mensaje.');
     if(Date.now()-s.lastMessage<3000)return error(res,429,'Espera unos segundos antes de enviar otro mensaje.');
     s.lastMessage=Date.now();
+    s.typingUntil=0;sendTyping();
     const m={id:crypto.randomUUID(),nick:s.nick,text,at:new Date().toISOString()};
     messages.push(m);if(messages.length>100)messages.shift();everyone('message-new',m);return msg(res,201,{ok:true});
   }
@@ -259,7 +392,7 @@ function handlePost(req,res,s,route,body){
     if(!online(s)||!s.nick)return error(res,403,'Necesitas registrar un nick para participar.');
     if(!contest||contest.phase!=='signup')return error(res,409,'Las inscripciones no están abiertas.');
     if(!contest.players.has(s.id)&&contest.players.size>=MAX_PLAYERS)return error(res,409,'El reto llegó al máximo de participantes.');
-    if(!contest.players.has(s.id))contest.players.set(s.id,{nick:s.nick,score:0,alive:true,order:contest.players.size+1,firstTap:Number.MAX_SAFE_INTEGER,lastTap:0});
+    if(!contest.players.has(s.id))contest.players.set(s.id,{nick:s.nick,score:0,alive:true,order:contest.players.size+1,firstTap:Number.MAX_SAFE_INTEGER,lastTap:0,answeredRound:0,totalResponseMs:0});
     sendContest();return msg(res,200,{ok:true});
   }
   if(route==='/api/challenge/action'){const r=challengeAction(s,body);return msg(res,r.status,r);}
@@ -293,7 +426,7 @@ const server=http.createServer((req,res)=>{
     res.writeHead(200,{'Content-Type':'text/event-stream; charset=utf-8','Cache-Control':'no-cache, no-transform','Connection':'keep-alive','X-Accel-Buffering':'no'});
     res.write(': conectado\n\n');
     s.connections++;s.clients.add(res);s.lastSeen=Date.now();
-    send(res,'history',{messages});send(res,'session',sessionInfo(s));send(res,'link-state',linkStatus(s));send(res,'challenge-state',publicContest());
+    send(res,'history',{messages});send(res,'typing',{nicks:typers()});send(res,'session',sessionInfo(s));send(res,'link-state',linkStatus(s));send(res,'challenge-state',publicContest());
     if(isAdmin(s))send(res,'admin-roster',{users:roster(),registered:registeredCount(),minPlayers:MIN_PLAYERS});
     everyone('presence',{online:[...sessions.values()].filter(online).length});sendRoster();
     const heartbeat=setInterval(()=>{if(!res.destroyed&&!res.writableEnded)try{res.write(': ping\n\n');}catch{}},22000);
@@ -301,6 +434,7 @@ const server=http.createServer((req,res)=>{
       clearInterval(heartbeat);s.clients.delete(res);s.connections=Math.max(0,s.connections-1);s.lastSeen=Date.now();
       everyone('presence',{online:[...sessions.values()].filter(online).length});sendRoster();
       if(s.connections===0){
+        s.typingUntil=0;sendTyping();
         s.disconnectTimer=setTimeout(()=>{s.disconnectTimer=null;if(s.connections===0){removeDisconnectedPlayer(s);releaseNick(s);permissions.delete(s.id);}},6000);
       }
     });
@@ -316,5 +450,6 @@ const server=http.createServer((req,res)=>{
   }
   error(res,404,'No encontrado.');
 });
-server.listen(PORT,'0.0.0.0',()=>console.log(`Únete BB v6.4 · puerto ${PORT} · mode ${accessMode}`));
+server.listen(PORT,'0.0.0.0',()=>console.log(`Únete BB v6.5 · puerto ${PORT} · mode ${accessMode}`));
+setInterval(()=>sendTyping(),950).unref();
 setInterval(()=>{const expire=Date.now()-86400000;for(const [id,s] of sessions){if(!online(s)&&!s.nick&&s.lastSeen<expire){sessions.delete(id);permissions.delete(id);}}},600000).unref();

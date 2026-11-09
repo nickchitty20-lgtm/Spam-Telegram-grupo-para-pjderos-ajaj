@@ -15,6 +15,12 @@
   let buttonText = 'Únete, bb 💗';
   let lastEpicTimeout = null;
   const seen = new Set();
+  const quizTypes = ['trivia','math','scramble','riddle'];
+  let lastQuizKey = '';
+  let quizBusy = false;
+  let typingStopTimer = null;
+  let lastTypingAt = 0;
+
 
   async function api(route, body) {
     const r=await fetch(route,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
@@ -120,6 +126,8 @@
   }
   function drawChallenge(){
     $('challengeLive').hidden=!challenge;
+    $('quizArea').hidden=!challenge || !quizTypes.includes(challenge.type);
+    if(!challenge)lastQuizKey='';
     $('challengeIntro').hidden=!!challenge;
     $('challengeBadge').textContent=challenge?({signup:'Inscripciones',countdown:'Preparados',active:'Jugando',between:'Eliminando',finished:'Finalizado'}[challenge.phase]||'Reto'):'En espera';
     const start=$('startChallenge'),cancel=$('cancelChallenge');
@@ -127,23 +135,97 @@
     cancel.disabled=!(admin&&challenge);
     if(!challenge)return;
     $('challengeTitle').textContent=challenge.title;
-    $('challengePhase').textContent=challenge.phase==='signup'?'Inscripción abierta':challenge.phase==='countdown'?`Ronda ${challenge.round} · Preparándose`:challenge.phase==='active'?`Ronda ${challenge.round} · ¡En acción!`:challenge.phase==='between'?`Ronda ${challenge.round} finalizada`:challenge.phase==='finished'?'🏁 Resultado final':'...';
+    $('challengePhase').textContent=challenge.phase==='signup'?'Inscripción abierta':challenge.phase==='countdown'?`Ronda ${challenge.round} · Preparándose`:challenge.phase==='active'?`Ronda ${challenge.round}${challenge.totalRounds?' de '+challenge.totalRounds:''} · ¡En acción!`:challenge.phase==='between'?`Ronda ${challenge.round} finalizada`:challenge.phase==='finished'?'🏁 Resultado final':'...';
     $('challengeNote').textContent=challenge.note||'';
     const participant=challenge.participants.find(p=>p.nick===nick);
     $('joinChallenge').hidden=challenge.phase!=='signup'||!nick||!!participant;
-    $('playChallenge').hidden=challenge.phase!=='active'||!participant||!participant.alive;
+    const quiz=quizTypes.includes(challenge.type);
+    $('playChallenge').hidden=quiz||challenge.phase!=='active'||!participant||!participant.alive;
+    if(quiz) {
+      const q=challenge.question;
+      const active=challenge.phase==='active';
+      const mayAnswer=active&&!!participant&&participant.alive&&!participant.answered;
+      const choice=challenge.type==='trivia';
+      $('quizQuestion').textContent=q ? q.prompt+(q.reveal?' · ✅ '+q.reveal:'') : challenge.phase==='signup'?'Inscríbete para jugar tres rondas.':challenge.phase==='countdown'?'🕓 La pregunta aparecerá en unos segundos...':'¡Ronda terminada!';
+      $('quizChoices').hidden=!choice||!mayAnswer;
+      $('quizForm').hidden=choice||!mayAnswer;
+      if(choice&&mayAnswer&&q){
+        const area=$('quizChoices');area.replaceChildren();
+        for(const option of q.options){
+          const btn=el('button','quiz-choice',option);
+          btn.type='button';btn.disabled=quizBusy;
+          btn.addEventListener('click',()=>submitQuizAnswer(option));
+          area.appendChild(btn);
+        }
+      }
+      const newKey=challenge.id+':'+challenge.round;
+      if(lastQuizKey!==newKey){
+        lastQuizKey=newKey;$('quizInput').value='';$('quizFeedback').textContent='';quizBusy=false;
+      }
+      $('quizSubmit').disabled=quizBusy;
+      $('quizInput').disabled=quizBusy;
+      if(active){
+        $('quizFeedback').textContent=participant?.answered ? `✅ Respuesta registrada · ${challenge.responded}/${challenge.participants.length} respondieron` :
+          mayAnswer ? `⏳ ${challenge.responded}/${challenge.participants.length} respondieron · Tienes un intento` :
+          `👀 ${challenge.responded}/${challenge.participants.length} respondieron en vivo`;
+      } else if(q?.reveal){
+        $('quizFeedback').textContent='✅ La respuesta era: '+q.reveal;
+      } else {
+        $('quizFeedback').textContent='';
+      }
+    }
     $('playChallenge').textContent=challenge.type==='first'?'⚡ ¡SOY EL PRIMERO!':'🔥 ¡TOCA, TOCA, TOCA!';
     $('participationLabel').textContent=!nick?'Registra tu nick para participar.':challenge.phase==='signup'&&participant?'✅ Estás inscrito. Gabriela decidirá cuándo empezar.':participant&&!participant.alive?'❌ Has quedado eliminado. Ahora puedes espectar.':challenge.phase==='finished'&&challenge.winner?`🎉 Ganador: ${challenge.winner}`:challenge.phase==='active'&&!participant?'👀 Estás espectando el reto.':challenge.phase==='countdown'&&participant?'⏳ Prepárate para pulsar el botón.':'';
     $('scoreCount').textContent=`${challenge.participants.length}/${challenge.minPlayers||minPlayers} participantes`;
+    if(quiz){
+      $('scoreCount').textContent+=` · Ronda ${challenge.round}/${challenge.totalRounds}`;
+    }
     const sb=$('scoreboard');sb.replaceChildren();
     const sorted=challenge.participants;
     sorted.forEach((p,i)=>{
       const item=el('div','score'+(!p.alive?' lost':'')+(challenge.phase==='finished'&&challenge.winner===p.nick?' winner':''));
       item.appendChild(el('span','',`${i+1}.`));item.appendChild(el('b','',p.nick));
-      item.appendChild(el('span','points',p.alive?`${p.score} ${p.score===1?'toque':'toques'}`:'ELIMINADO'));
+      const points=quiz?`${p.score} ${p.score===1?'acierto':'aciertos'}${p.answered&&challenge.phase==='active'?' · ✓':''}`:
+        `${p.score} ${p.score===1?'toque':'toques'}`;
+      item.appendChild(el('span','points',p.alive?points:'ELIMINADO'));
       sb.appendChild(item);
     });
     updateClock();
+  }
+  async function submitQuizAnswer(answer){
+    if(quizBusy||!challenge||challenge.phase!=='active'||challenge.deadline<=Date.now())return;
+    const p=challenge.participants.find(x=>x.nick===nick);
+    if(!p||!p.alive||p.answered)return;
+    quizBusy=true;
+    $('quizSubmit').disabled=true;
+    document.querySelectorAll('.quiz-choice').forEach(btn=>btn.disabled=true);
+    try{
+      await api('/api/challenge/action',{answer});
+      $('quizFeedback').textContent='✅ Respuesta enviada. Espera la siguiente ronda 💗';
+    }catch(err){
+      tell(err.message);$('quizFeedback').textContent=err.message;
+    }finally{quizBusy=false;}
+  }
+  function renderTyping(nicks){
+    const list=Array.isArray(nicks)?nicks.filter(x=>typeof x==='string'&&x):[];
+    const indicator=$('typingIndicator');
+    if(!list.length){indicator.hidden=true;return;}
+    const labels=list.map(n=>n===nick?'Tú':n);
+    let label;
+    if(labels.length===1) label=labels[0]+(labels[0]==='Tú'?' estás':' está')+' escribiendo…';
+    else if(labels.length===2)label=labels.join(' y ')+' están escribiendo…';
+    else label=labels.slice(0,2).join(', ')+' y '+(labels.length-2)+' más están escribiendo…';
+    $('typingText').textContent=label;
+    indicator.hidden=false;
+  }
+  function signalTyping(active){
+    if(!nick||!online)return;
+    api('/api/typing',{typing:active}).catch(()=>{});
+  }
+  function stoppedTyping(){
+    if(typingStopTimer){clearTimeout(typingStopTimer);typingStopTimer=null;}
+    lastTypingAt=0;
+    signalTyping(false);
   }
   function doEpic(){
     $('overlay').hidden=false;
@@ -185,18 +267,30 @@
     stream.addEventListener('admin-roster',e=>{try{showRoster(JSON.parse(e.data));}catch{}});
     stream.addEventListener('challenge-state',e=>{try{challenge=JSON.parse(e.data);drawChallenge();}catch{}});
     stream.addEventListener('gabriela-epic',()=>doEpic());
+    stream.addEventListener('typing',e=>{try{renderTyping(JSON.parse(e.data).nicks);}catch{}});
   }
 
   $('nickInput').addEventListener('input',()=>{$('pinRow').hidden=$('nickInput').value.trim().toLocaleLowerCase('es')!=='gabriela';});
   $('nickForm').addEventListener('submit',async e=>{e.preventDefault();await claim($('nickInput').value);});
   $('changeNick').addEventListener('click',async()=>{
+    stoppedTyping();
     const released=await action('/api/nick/release');
     if(!released)return;
     try{localStorage.removeItem('bb_chat_nick');}catch{}
     const old=nick;nick='';admin=false;showIdentity();$('nickInput').value=old;$('pinRow').hidden=old.toLowerCase()!=='gabriela';tell('Puedes elegir otro nick 💗',true);
   });
+  $('messageInput').addEventListener('input',()=>{
+    if(!nick||!online)return;
+    if(typingStopTimer)clearTimeout(typingStopTimer);
+    if(!$('messageInput').value.trim()){stoppedTyping();return;}
+    const now=Date.now();
+    if(now-lastTypingAt>=1400){lastTypingAt=now;signalTyping(true);}
+    typingStopTimer=setTimeout(stoppedTyping,2000);
+  });
+  $('messageInput').addEventListener('blur',()=>{if(!document.activeElement||document.activeElement!==$('sendButton'))stoppedTyping();});
   $('messageForm').addEventListener('submit',async e=>{
     e.preventDefault();const text=$('messageInput').value.trim();if(!text)return;
+    stoppedTyping();
     $('sendButton').disabled=true;
     const result=await action('/api/messages',{text});
     if(result){$('messageInput').value='';$('messageInput').focus();}
@@ -224,7 +318,8 @@
   }));
   $('startChallenge').addEventListener('click',async()=>{await action('/api/challenge/start',{},'¡Reto comenzando! 🔥');});
   $('cancelChallenge').addEventListener('click',async()=>{await action('/api/challenge/cancel',{},'Reto cancelado.');});
-  $('joinChallenge').addEventListener('click',async()=>{await action('/api/challenge/join',{},'¡Inscrito! A preparar los dedos 💗');});
+  $('joinChallenge').addEventListener('click',async()=>{await action('/api/challenge/join',{},'¡Inscrito! A preparar el reto 💗');});
+  $('quizForm').addEventListener('submit',e=>{e.preventDefault();const value=$('quizInput').value.trim();if(value)submitQuizAnswer(value);});
   let actionBusy=false;
   $('playChallenge').addEventListener('click',async()=>{
     if(actionBusy||!challenge||challenge.phase!=='active'||challenge.deadline<=Date.now())return;

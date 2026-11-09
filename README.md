@@ -72,3 +72,20 @@ Importante: reemplaza **todos** los archivos del ZIP, incluidos `public/index.ht
 ## Cambios v6.4
 
 El mínimo por defecto para abrir e iniciar los retos es **3**, en lugar de 7. Gabriela puede comenzar con 3 nicks conectados y 3 personas inscritas. Se puede cambiar desde Railway ajustando `MIN_PLAYERS` a un número entero entre 2 y 20 (el valor inicial es 3). Los mensajes del panel y la validación del servidor usan el mismo mínimo.
+
+## Novedades v6.5 — cuatro concursos que no son solo pulsar botones
+
+Gabriela conserva sus botones de control del enlace, su animación especial y los 3 retos anteriores. Ahora dispone también de:
+
+- **🧠 Preguntas relámpago:** el usuario selecciona una respuesta entre cuatro opciones. Tres preguntas por partida.
+- **🔢 Cálculo exprés:** operaciones de suma, resta y multiplicación; escribe el resultado. Tres rondas.
+- **🔤 Palabras revueltas:** aparecen letras mezcladas; escribir la palabra correcta. Tres rondas.
+- **🕵️ Adivinanzas:** escribe la solución de una adivinanza. Tres rondas.
+
+Cada concurso se abre cuando hay por lo menos `MIN_PLAYERS` (por defecto 3) nicks conectados, y Gabriela inicia después de que se hayan inscrito por lo menos tantos participantes. La pregunta y las puntuaciones se ven públicamente en vivo, pero el servidor guarda la solución para validar respuestas; cada jugador tiene **un intento por ronda** y no se publica quién acertó hasta que la puntuación se actualiza. Al terminar las rondas aparece el ganador y el ranking (desempate: menor tiempo acumulado de respuestas acertadas y luego inscripción).
+
+**Nuevo indicador debajo del chat:** muestra «Gabriela está escribiendo…», «Gabriela y Carlos están escribiendo…» o los nicks de más personas en vivo. Solo aparece cuando usuarios con nick registrado están tecleando; se oculta automáticamente al enviar, dejar de escribir o desconectarse. No almacena el texto que se esté escribiendo.
+
+Los 7 minijuegos, el indicador de escritura, el chat y los permisos usan el mismo servidor Node.js sin paquetes adicionales. Mantén **una sola réplica** en Railway porque todo el estado vive en memoria y se perderá al reiniciar el servicio.
+
+Para actualizar, reemplaza `server.js`, `package.json` y **toda** la carpeta `public`; después redespliega y recarga la página (Ctrl+F5) para evitar caché antiguo. No requiere variables nuevas.
