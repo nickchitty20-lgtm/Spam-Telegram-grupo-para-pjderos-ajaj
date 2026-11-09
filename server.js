@@ -25,7 +25,11 @@ const permissions = new Map(); // id => true|false; default comes from LINK_MODE
 const messages = [];
 let adminOwner = null;
 let epicAt = 0;
-const MIN_PLAYERS = 7;
+// 3 por defecto. Ajustable desde Railway; limita valores para evitar configuraciones inválidas.
+const MIN_PLAYERS = (() => {
+  const parsed = Number(process.env.MIN_PLAYERS);
+  return Number.isInteger(parsed) && parsed >= 2 && parsed <= 20 ? parsed : 3;
+})();
 const MAX_PLAYERS = 64;
 let contest = null;
 const contestTimers = new Set();
@@ -279,7 +283,7 @@ const server=http.createServer((req,res)=>{
   }
   if(req.method==='GET'&&route==='/api/config'){
     if(!s)return error(res,401,'Primero abre la página principal.');
-    return msg(res,200,{name:NAME,button:BUTTON,chatTitle:CHAT_TITLE,welcome:CHAT_WELCOME,shout:SHOUT,link:linkStatus(s),mode:accessMode});
+    return msg(res,200,{name:NAME,button:BUTTON,chatTitle:CHAT_TITLE,welcome:CHAT_WELCOME,shout:SHOUT,link:linkStatus(s),mode:accessMode,minPlayers:MIN_PLAYERS});
   }
   if(req.method==='GET'&&route==='/api/stream'){
     if(!s)return error(res,401,'Primero abre la página principal.');
@@ -312,5 +316,5 @@ const server=http.createServer((req,res)=>{
   }
   error(res,404,'No encontrado.');
 });
-server.listen(PORT,'0.0.0.0',()=>console.log(`Únete BB v6.3 · puerto ${PORT} · mode ${accessMode}`));
+server.listen(PORT,'0.0.0.0',()=>console.log(`Únete BB v6.4 · puerto ${PORT} · mode ${accessMode}`));
 setInterval(()=>{const expire=Date.now()-86400000;for(const [id,s] of sessions){if(!online(s)&&!s.nick&&s.lastSeen<expire){sessions.delete(id);permissions.delete(id);}}},600000).unref();

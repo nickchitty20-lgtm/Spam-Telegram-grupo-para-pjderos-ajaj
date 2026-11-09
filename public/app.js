@@ -8,6 +8,7 @@
   let challenge = null;
   let online = false;
   let registered = 0;
+  let minPlayers = 3;
   let roster = [];
   let selectedNick = ''; // se elige por el nick visible, nunca por el índice de la lista
   let shout = 'entra bb 💕';
@@ -70,7 +71,8 @@
     // No mostramos IDs de sesiones ni números de posición como si fueran nombres.
     roster=Array.isArray(data.users) ? data.users.filter(u=>u && typeof u.nick==='string' && u.nick.trim()) : [];
     registered=Number.isFinite(data.registered) ? data.registered : roster.length;
-    $('registeredLabel').textContent=`Nicks conectados: ${registered}/7 mínimos`;
+    if(Number.isInteger(data.minPlayers) && data.minPlayers >= 2) minPlayers=data.minPlayers;
+    $('registeredLabel').textContent=`Nicks conectados: ${registered}/${minPlayers} mínimos`;
     if(!roster.some(u=>u.nick===selectedNick)) selectedNick='';
     const list=$('nickList');list.replaceChildren();
     if(!roster.length) {
@@ -95,7 +97,7 @@
     $('selectedNickLabel').textContent=hasSelection?'Seleccionado: '+selectedNick:'Toca un nick para seleccionarlo';
     $('allowNick').disabled=!hasSelection;
     $('denyNick').disabled=!hasSelection;
-    document.querySelectorAll('[data-challenge]').forEach(b=>b.disabled=registered<7);
+    document.querySelectorAll('[data-challenge]').forEach(b=>b.disabled=registered<minPlayers);
   }
   function appendMessage(m){
     if(!m||!m.id||seen.has(m.id))return;
@@ -121,7 +123,7 @@
     $('challengeIntro').hidden=!!challenge;
     $('challengeBadge').textContent=challenge?({signup:'Inscripciones',countdown:'Preparados',active:'Jugando',between:'Eliminando',finished:'Finalizado'}[challenge.phase]||'Reto'):'En espera';
     const start=$('startChallenge'),cancel=$('cancelChallenge');
-    start.disabled=!(admin&&challenge&&challenge.phase==='signup'&&challenge.participants.length>=7);
+    start.disabled=!(admin&&challenge&&challenge.phase==='signup'&&challenge.participants.length>=(challenge.minPlayers||minPlayers));
     cancel.disabled=!(admin&&challenge);
     if(!challenge)return;
     $('challengeTitle').textContent=challenge.title;
@@ -132,7 +134,7 @@
     $('playChallenge').hidden=challenge.phase!=='active'||!participant||!participant.alive;
     $('playChallenge').textContent=challenge.type==='first'?'⚡ ¡SOY EL PRIMERO!':'🔥 ¡TOCA, TOCA, TOCA!';
     $('participationLabel').textContent=!nick?'Registra tu nick para participar.':challenge.phase==='signup'&&participant?'✅ Estás inscrito. Gabriela decidirá cuándo empezar.':participant&&!participant.alive?'❌ Has quedado eliminado. Ahora puedes espectar.':challenge.phase==='finished'&&challenge.winner?`🎉 Ganador: ${challenge.winner}`:challenge.phase==='active'&&!participant?'👀 Estás espectando el reto.':challenge.phase==='countdown'&&participant?'⏳ Prepárate para pulsar el botón.':'';
-    $('scoreCount').textContent=`${challenge.participants.length} participantes`;
+    $('scoreCount').textContent=`${challenge.participants.length}/${challenge.minPlayers||minPlayers} participantes`;
     const sb=$('scoreboard');sb.replaceChildren();
     const sorted=challenge.participants;
     sorted.forEach((p,i)=>{
@@ -164,6 +166,7 @@
       $('chatTitle').textContent=config.chatTitle;
       $('chatWelcome').textContent=config.welcome;
       buttonText=config.button;shout=config.shout;
+      if(Number.isInteger(config.minPlayers)) minPlayers=config.minPlayers;
       updateLink(config.link);
     }catch{tell('No se pudo cargar la configuración del sitio.');}
     const stream=new EventSource('/api/stream');
@@ -176,7 +179,7 @@
     stream.addEventListener('history',e=>{try{JSON.parse(e.data).messages.forEach(appendMessage);}catch{}});
     stream.addEventListener('message-new',e=>{try{appendMessage(JSON.parse(e.data));}catch{}});
     stream.addEventListener('presence',e=>{try{$('onlineNum').textContent=String(JSON.parse(e.data).online);$('presence').style.opacity='1';}catch{}});
-    stream.addEventListener('registered-count',e=>{try{registered=JSON.parse(e.data).registered;}catch{}});
+    stream.addEventListener('registered-count',e=>{try{const data=JSON.parse(e.data); registered=data.registered; if(Number.isInteger(data.minPlayers))minPlayers=data.minPlayers; $('registeredLabel').textContent=`Nicks conectados: ${registered}/${minPlayers} mínimos`; document.querySelectorAll('[data-challenge]').forEach(b=>b.disabled=registered<minPlayers);}catch{}});
     stream.addEventListener('session',e=>{try{const d=JSON.parse(e.data);if(d.nick){nick=d.nick;admin=d.isGabriela;showIdentity();}else if(nick){nick='';admin=false;showIdentity();}}catch{}});
     stream.addEventListener('link-state',e=>{try{updateLink(JSON.parse(e.data));}catch{}});
     stream.addEventListener('admin-roster',e=>{try{showRoster(JSON.parse(e.data));}catch{}});

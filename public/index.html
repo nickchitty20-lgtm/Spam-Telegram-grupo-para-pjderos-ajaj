@@ -26,7 +26,7 @@
 
     <section class="card challenge" aria-label="Reto en vivo">
       <div class="section-head"><div><span class="overline">MINIJUEGOS</span><h2>🎮 Reto en vivo</h2></div><span class="mini-pill" id="challengeBadge">En espera</span></div>
-      <p class="hint" id="challengeIntro">Gabriela puede activar un reto cuando haya al menos 7 personas con nick conectado.</p>
+      <p class="hint" id="challengeIntro">Gabriela puede activar un reto cuando haya al menos 3 personas con nick conectado.</p>
       <div class="challenge-live" id="challengeLive" hidden>
         <div class="challenge-title" id="challengeTitle">Reto</div>
         <div class="roundline"><span id="challengePhase">Esperando jugadores...</span><span id="challengeTimer" class="timer">—</span></div>
@@ -36,7 +36,7 @@
           <button class="btn participant play" id="playChallenge" hidden>⚡ ¡TOCA YA!</button>
           <div class="participation-label" id="participationLabel"></div>
         </div>
-        <div class="scores-head"><span>Participantes y puntuación</span><span id="scoreCount">0/7</span></div>
+        <div class="scores-head"><span>Participantes y puntuación</span><span id="scoreCount">0/3</span></div>
         <div class="scoreboard" id="scoreboard"></div>
       </div>
       <div class="small-foot">El reto, los clasificados y el ganador se muestran públicamente en tiempo real.</div>
@@ -70,10 +70,10 @@
         </div>
         <div class="admin-section">
           <strong>🏆 Organizar concurso</strong>
-          <p id="registeredLabel">Registrados conectados: 0/7</p>
+          <p id="registeredLabel">Registrados conectados: 0/3</p>
           <div class="games"><button class="btn game" data-challenge="first">⚡ Primer clic</button><button class="btn game" data-challenge="taps">🔥 Toques 10s</button><button class="btn game" data-challenge="knockout">🏆 Eliminatoria</button></div>
           <div class="two-buttons"><button class="btn allow" id="startChallenge">▶️ Iniciar ronda</button><button class="btn deny" id="cancelChallenge">✖ Cancelar reto</button></div>
-          <small>Primero elige un modo, deja que se inscriban 7 o más jugadores y pulsa iniciar.</small>
+          <small>Primero elige un modo, deja que se inscriban 3 o más jugadores y pulsa iniciar.</small>
         </div>
       </div>
       <div class="messages" id="messages" role="log" aria-live="polite"><div class="empty" id="empty">💬 No hay mensajes todavía<br>¡Sé el primero en saludar!</div></div>
