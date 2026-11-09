@@ -1,40 +1,44 @@
-# Únete, bb 💗 — landing para Telegram
+# Únete, bb 💗 — landing + chat en vivo para Railway
 
-Página publicitaria sencilla y responsive para compartir un enlace de grupo o canal de Telegram. No requiere base de datos, bots ni servicios externos.
+Página publicitaria para compartir un grupo o canal de Telegram, con chat público en vivo debajo del botón. Los visitantes **no necesitan registrarse**: escriben un nick (2–22 caracteres) y ya pueden enviar mensajes. Los mensajes nuevos se actualizan al instante con Server-Sent Events (SSE). No usa dependencias externas ni base de datos.
 
-## Variables de Railway
+## Variables en Railway
 
-En tu servicio de Railway, abre **Variables** y agrega:
-
-| Variable | Ejemplo | Obligatoria |
+| Variable | Ejemplo | Descripción |
 |---|---|---|
-| `TELEGRAM_NAME` | `Zona Chat` | Recomendada |
-| `TELEGRAM_LINK` | `https://t.me/TuCanal` o `https://t.me/+TuCodigo` | Sí |
-| `BUTTON_TEXT` | `Únete, bb 💗` | No |
+| `TELEGRAM_NAME` | `Zona Chat` | Nombre de tu comunidad |
+| `TELEGRAM_LINK` | `https://t.me/TuCanal` | Destino del botón |
+| `BUTTON_TEXT` | `Entra, bb 😈💗` | Texto del botón principal y el enlace de la invitación en el chat |
+| `CHAT_TITLE` | `Chat en vivo 💬` | Título del chat (opcional) |
+| `CHAT_WELCOME` | `¡Hola, bb! 💕 Únete al Telegram y saluda por aquí.` | Mensaje destacado firmado como **Mensaje de la página** (opcional) |
 
-El enlace debe empezar por `https://t.me/` (también se admite `https://telegram.me/`). Si el enlace falta o no es válido, el botón se muestra desactivado.
+El enlace tiene que apuntar a `https://t.me/` o `https://telegram.me/`. Si no es válido, el botón aparece desactivado.
 
 ## Desplegar en Railway
 
-1. Sube el contenido a un repositorio de GitHub o conecta el proyecto a Railway.
-2. Crea un servicio en Railway desde ese repositorio.
-3. En **Variables**, añade `TELEGRAM_NAME` y `TELEGRAM_LINK`.
-4. El comando de inicio es `npm start` (Railway suele detectarlo automáticamente).
-5. En **Settings > Networking** crea un dominio público, si todavía no tienes uno.
-6. Comparte esa URL. Para cambiar el canal o grupo, actualiza las variables y despliega la nueva configuración.
+1. Sube estos archivos a un repositorio GitHub (o utiliza el despliegue por CLI de Railway).
+2. Crea un servicio en Railway a partir del repositorio.
+3. En **Variables**, configura `TELEGRAM_NAME`, `TELEGRAM_LINK` y las opcionales que quieras.
+4. Railway iniciará la app con `npm start` y definirá `PORT` automáticamente.
+5. En **Settings → Networking**, crea un dominio público y comparte el enlace.
 
-Railway establece `PORT` automáticamente; no necesitas configurarla manualmente.
+Si cambias las variables, Railway volverá a desplegar la app con los nuevos textos.
 
-## Ejecutar localmente
+## Probar en local
+
+Con Node.js 18 o superior:
 
 ```bash
-TELEGRAM_NAME="Zona Chat" TELEGRAM_LINK="https://t.me/TuCanal" npm start
+TELEGRAM_NAME='Mi grupo' TELEGRAM_LINK='https://t.me/mi_grupo' npm start
 ```
 
-Abre `http://localhost:3000`.
+Abre `http://localhost:3000` en dos pestañas para probar mensajes entre usuarios.
 
-## Notas
+## Avisos importantes
 
-- La vista previa al compartir incluye el nombre configurado mediante etiquetas Open Graph.
-- Se han eliminado dependencias para mantener el proyecto pequeño.
-- No recopila datos de visitantes ni tiene panel administrativo.
+- **El chat es real, no simulado:** el mensaje fijado es un anuncio del sitio, no testimonios falsos.
+- **Mensajes temporales:** se guardan solo en RAM (máximo 100). Un reinicio, cambio de variables o nuevo despliegue borra el historial. Si quieres historial permanente o escalado en múltiples instancias, hay que conectar Redis o una base de datos.
+- Usa **una sola réplica de Railway** para que todos vean los mismos mensajes. Si se despliegan varias réplicas, cada una tendría su propio chat.
+- El nick no prueba la identidad de nadie: cualquiera puede escoger el mismo. No compartas datos sensibles en el chat.
+- Antispam básico: 1 mensaje cada ~3.5 segundos por dirección de conexión, 240 caracteres máximo por mensaje. No hay moderación avanzada; conviene agregarla si el sitio crece.
+- El servidor mantiene direcciones de conexión temporalmente en memoria para limitar envíos, pero no las escribe en el historial de mensajes.
