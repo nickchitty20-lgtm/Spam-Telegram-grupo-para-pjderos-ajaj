@@ -1,50 +1,43 @@
-# Únete, bb 💗 — landing + chat en vivo para Railway
+# Únete BB v5.0 — Railway
 
-Página publicitaria para compartir un grupo o canal de Telegram, con chat público en vivo debajo del botón, un contador 👁️ de conectados y fondo rosa/violeta animado. Los visitantes **no necesitan registrarse**: escriben un nick (2–22 caracteres) y ya pueden enviar mensajes. Los mensajes nuevos y el contador 👁️ se actualizan al instante con Server-Sent Events (SSE). No usa dependencias externas ni base de datos.
+Página de promoción de Telegram con chat en vivo, nick sin registro, contador de visitantes, fondo animado y **modo Gabriela**.
+
+## Cambios de esta versión
+
+- Gabriela dispone de los botones **🔒 Deshabilitar enlace** y **🔓 Habilitar enlace** dentro del chat.
+- Los cambios llegan al instante a todos los navegadores conectados mediante eventos en vivo (Server-Sent Events).
+- Mientras el enlace está deshabilitado, el botón principal se desactiva, desaparece el enlace de invitación en el chat y también se bloquea el acceso a `/join` en el servidor.
+- Solo la sesión que tiene reservado el nick `Gabriela` puede activar el botón de la animación épica y cambiar el estado del enlace.
+- Si se libera `Gabriela` o se desconecta el último navegador de esa sesión, el nick queda disponible para otra persona.
+- El resto del chat sigue funcionando aunque el enlace de Telegram esté deshabilitado.
 
 ## Variables en Railway
 
-| Variable | Ejemplo | Descripción |
-|---|---|---|
-| `TELEGRAM_NAME` | `Zona Chat` | Nombre de tu comunidad |
-| `TELEGRAM_LINK` | `https://t.me/TuCanal` | Destino del botón |
-| `BUTTON_TEXT` | `Entra, bb 😈💗` | Texto del botón principal y el enlace de la invitación en el chat |
-| `CHAT_TITLE` | `Chat en vivo 💬` | Título del chat (opcional) |
-| `CHAT_WELCOME` | `¡Hola, bb! 💕 Únete al Telegram y saluda por aquí.` | Mensaje destacado firmado como **Mensaje de la página** (opcional) |
+| Variable | Ejemplo | Obligatoria |
+| --- | --- | --- |
+| `TELEGRAM_NAME` | `Zona Femenina 💗` | Recomendada |
+| `TELEGRAM_LINK` | `https://t.me/TuGrupo` | Sí, para habilitar el botón |
+| `BUTTON_TEXT` | `Entra, bb 😈💗` | No |
+| `CHAT_TITLE` | `Chat en vivo 💬` | No |
+| `CHAT_WELCOME` | `Únete a nuestro grupo 💕` | No |
+| `GABRIELA_SHOUT` | `entra bb 💕` | No |
+| `LINK_ENABLED` | `true` o `false` | No, por defecto `true` |
 
-El enlace tiene que apuntar a `https://t.me/` o `https://telegram.me/`. Si no es válido, el botón aparece desactivado.
+`LINK_ENABLED` controla el estado **inicial** al arrancar. Gabriela puede cambiarlo cuando el sitio está funcionando.
 
-## Desplegar en Railway
+## Despliegue
 
-1. Sube estos archivos a un repositorio GitHub (o utiliza el despliegue por CLI de Railway).
-2. Crea un servicio en Railway a partir del repositorio.
-3. En **Variables**, configura `TELEGRAM_NAME`, `TELEGRAM_LINK` y las opcionales que quieras.
-4. Railway iniciará la app con `npm start` y definirá `PORT` automáticamente.
-5. En **Settings → Networking**, crea un dominio público y comparte el enlace.
+1. Descomprime este ZIP y sube los archivos a tu repositorio de GitHub.
+2. Vincula el repositorio a Railway y crea un servicio Node.js.
+3. Establece las variables de entorno.
+4. Inicia con `npm start` (Railway puede detectarlo automáticamente).
+5. Abre el dominio que Railway genera para tu servicio.
 
-Si cambias las variables, Railway volverá a desplegar la app con los nuevos textos.
+Para probar en tu equipo: `npm start` y después abre http://localhost:3000.
 
-## Probar en local
+## Límites a tener en cuenta
 
-Con Node.js 18 o superior:
-
-```bash
-TELEGRAM_NAME='Mi grupo' TELEGRAM_LINK='https://t.me/mi_grupo' npm start
-```
-
-Abre `http://localhost:3000` en dos pestañas para probar mensajes entre usuarios.
-
-## Contador 👁️ y fondo animado
-
-El ojo muestra las **sesiones de navegador que siguen conectadas al chat ahora mismo**, sin números simulados. Varias pestañas del mismo navegador normalmente se cuentan una sola vez. Si alguien pierde conexión, el número se actualiza al reconectar o cerrar el canal SSE. No es una medida exacta de personas físicas (una persona puede usar distintos dispositivos, y un bot también puede conectarse).
-
-El fondo incluye auroras rosadas/violetas animadas y puntitos suaves. Respeta la preferencia de accesibilidad **reducir movimiento** y no necesita servicios ni imágenes de terceros.
-
-## Avisos importantes
-
-- **El chat es real, no simulado:** el mensaje fijado es un anuncio del sitio, no testimonios falsos.
-- **Mensajes temporales:** se guardan solo en RAM (máximo 100). Un reinicio, cambio de variables o nuevo despliegue borra el historial. Si quieres historial permanente o escalado en múltiples instancias, hay que conectar Redis o una base de datos.
-- Usa **una sola réplica de Railway** para que todos vean los mismos mensajes. Si se despliegan varias réplicas, cada una tendría su propio chat.
-- El nick no prueba la identidad de nadie: cualquiera puede escoger el mismo. No compartas datos sensibles en el chat.
-- Antispam básico: 1 mensaje cada ~3.5 segundos por dirección de conexión, 240 caracteres máximo por mensaje. No hay moderación avanzada; conviene agregarla si el sitio crece.
-- El servidor mantiene direcciones de conexión temporalmente en memoria para limitar envíos, pero no las escribe en el historial de mensajes.
+- **Sin inicio de sesión**, cualquier persona que tome primero el nick `Gabriela` podrá usar esos controles. Esto no verifica la identidad real de Gabriela. Si necesitas que solo una persona concreta lo pueda usar, conviene añadir un PIN privado.
+- El chat, el contador y el estado activado/desactivado se guardan solo en memoria. Al reiniciar o redesplegar Railway se borran los mensajes y el estado del enlace vuelve a lo configurado por `LINK_ENABLED`.
+- Usa **una sola réplica de Railway** para mantener el chat y los controles sincronizados sin base de datos.
+- El contador representa navegadores conectados aproximadamente, no garantiza individuos únicos.

@@ -1,8 +1,13 @@
 {
   "name": "unete-bb-railway",
-  "version": "3.0.0",
+  "version": "5.0.0",
   "private": true,
-  "description": "Landing para Telegram con chat anónimo en vivo",
-  "scripts": { "start": "node server.js", "test": "node --check server.js" },
-  "engines": { "node": ">=18" }
+  "description": "Página de Telegram con chat en vivo, Gabriela y control del enlace",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --check server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
 }
