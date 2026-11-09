@@ -50,3 +50,9 @@ input:focus,select:focus {border-color:#ee80c1;outline:2px solid #f269be30} inpu
 .huge {font-size:clamp(45px,14vw,76px);letter-spacing:-.08em;text-shadow:0 0 30px #ff5aae;overflow-wrap:anywhere;line-height:1.1}.overlay-card p {font-size:clamp(25px,7vw,36px);color:#ffd5e8;font-weight:900;margin:10px auto}.overlay-description {font-size:13px;color:#e9c5dd}.ghost {margin-top:19px;background:#ffffff21}
 @media(max-width:365px){.games{grid-template-columns:1fr}.page{gap:11px}.hero{padding:22px 16px}.challenge,.chat{padding:15px 12px}.two-buttons{grid-template-columns:1fr}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;transition:none!important}}
+
+/* V6.1: controles del enlace separados y legibles en celular */
+.link-controls { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:10px 0 12px; }
+.link-controls .btn { white-space:normal; min-height:45px; font-size:12px; padding:10px 8px; }
+.link-controls .btn:last-child { grid-column:1 / -1; }
+@media(max-width:370px) { .link-controls { grid-template-columns:1fr; } .link-controls .btn:last-child { grid-column:auto; } }

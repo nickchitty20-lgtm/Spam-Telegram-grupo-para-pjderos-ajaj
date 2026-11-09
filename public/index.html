@@ -21,7 +21,7 @@
       <p>Te esperamos en <strong id="communityName">nuestra comunidad</strong>. Entra, conversa y diviértete por aquí 👀</p>
       <a class="btn cta" id="telegramButton" aria-disabled="true" tabindex="-1"><span class="telegram-plane">✈</span><span id="ctaLabel">Cargando enlace...</span></a>
       <div class="link-state" id="linkStatus">Comprobando invitación...</div>
-      <div class="tiny">El botón abre Telegram cuando está habilitado ✨</div>
+      <div class="tiny">Primero registra tu nick en el chat para entrar a Telegram ✨</div>
     </section>
 
     <section class="card challenge" aria-label="Reto en vivo">
@@ -49,12 +49,17 @@
         <div class="admin-heading">👑 Panel de Gabriela <span>PRIVADO</span></div>
         <button class="btn magic" id="epicButton">💖 Lanzar entrada épica para todos</button>
         <div class="admin-section">
-          <strong>🔗 Control general del enlace</strong>
-          <div class="admin-line"><span id="globalLinkLabel">Estado: ...</span><button class="btn sm" id="globalToggle">Cambiar</button></div>
+          <strong>🔗 Control del enlace</strong>
+          <p id="globalLinkLabel">Comprobando...</p>
+          <div class="link-controls">
+            <button class="btn allow" id="enableAll">🔓 Habilitar para TODOS los nicks</button>
+            <button class="btn deny" id="disableAll">🔒 Deshabilitar para TODOS</button>
+            <button class="btn ghost" id="exclusiveMode">🎯 Solo nicks autorizados</button>
+          </div>
         </div>
         <div class="admin-section">
           <strong>🎯 Elegir quién puede entrar</strong>
-          <p>Selecciona un nick conectado: solo esa persona recibirá o perderá acceso.</p>
+          <p>Selecciona un nick conectado. En modo exclusivo, Gabriela conserva siempre su acceso y puede autorizar a otros visitantes.</p>
           <select id="targetNick" aria-label="Elegir nick conectado"><option value="">Elige un nick...</option></select>
           <div class="two-buttons"><button class="btn allow" id="allowNick">🔓 Habilitar a este nick</button><button class="btn deny" id="denyNick">🔒 Deshabilitar</button></div>
           <small id="linkModeLabel"></small>

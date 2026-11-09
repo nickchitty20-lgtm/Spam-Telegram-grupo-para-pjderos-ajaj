@@ -11,7 +11,7 @@ const CHAT_TITLE = (process.env.CHAT_TITLE || 'Chat en vivo 💬').trim().slice(
 const CHAT_WELCOME = (process.env.CHAT_WELCOME || 'Únete al grupo, bb 💕. Charla por aquí y participa en los retos en vivo.').trim().slice(0, 280);
 const SHOUT = (process.env.GABRIELA_SHOUT || 'entra bb 💕').trim().slice(0, 60);
 const ADMIN_PIN = String(process.env.GABRIELA_PIN || '');
-const LINK_MODE = String(process.env.LINK_MODE || 'exclusive').trim().toLowerCase() === 'public' ? 'public' : 'exclusive';
+let accessMode = String(process.env.LINK_MODE || 'exclusive').trim().toLowerCase() === 'public' ? 'public' : 'exclusive';
 const validLink = (() => { try {
   const url = new URL((process.env.TELEGRAM_LINK || '').trim());
   if (url.protocol !== 'https:' || !['t.me','www.t.me','telegram.me','www.telegram.me'].includes(url.hostname.toLowerCase()) || url.pathname === '/' || url.username || url.password) return '';
@@ -58,8 +58,18 @@ function makeSession(req,res) {
 function online(s) { return s && s.connections>0; }
 function isAdmin(s) { return online(s) && s.nick==='Gabriela' && adminOwner===s.id; }
 function registeredCount() { let n=0; for(const s of sessions.values()) if(online(s)&&s.nick) n++; return n; }
-function canJoin(s) { return !!validLink && globalLinkEnabled && (permissions.get(s?.id) ?? (LINK_MODE==='public')); }
-function linkStatus(s) { return {enabled:!!s&&canJoin(s), configured:!!validLink, globalEnabled:globalLinkEnabled,mode:LINK_MODE}; }
+// Una persona debe estar conectada Y haber registrado un nick antes de recibir el enlace.
+// Gabriela siempre tiene entrada cuando el enlace general está habilitado,
+// incluso si activa el modo exclusivo sin seleccionarse a sí misma.
+function canJoin(s) {
+  if(!validLink || !globalLinkEnabled || !online(s) || !s.nick) return false;
+  if(isAdmin(s)) return true;
+  return permissions.get(s.id) ?? (accessMode==='public');
+}
+function linkStatus(s) {
+  return {enabled:canJoin(s),configured:!!validLink,globalEnabled:globalLinkEnabled,
+    mode:accessMode,needsNick:!s?.nick,adminAccess:isAdmin(s)};
+}
 function send(res,event,data) { if(res.destroyed||res.writableEnded) return; try { res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`); } catch {} }
 function everyone(event,data) { for (const s of sessions.values()) for(const res of s.clients) send(res,event,data); }
 function toSession(s,event,data) { if(s) for(const res of s.clients) send(res,event,data); }
@@ -210,14 +220,36 @@ function handlePost(req,res,s,route,body){
   if(route==='/api/link/global'){
     if(!isAdmin(s))return error(res,403,'Solo Gabriela puede cambiar el estado del enlace.');
     if(typeof body.enabled!=='boolean')return error(res,400,'Estado inválido.');
-    globalLinkEnabled=!!validLink&&body.enabled;sendLinkStates();sendRoster();return msg(res,200,{ok:true});
+    if(body.enabled && !validLink)return error(res,409,'Configura TELEGRAM_LINK en Railway antes de habilitar el enlace.');
+    globalLinkEnabled=body.enabled;
+    if(body.enabled){
+      // "Habilitar para TODOS" significa todos, no solo nicks autorizados.
+      accessMode='public';
+      permissions.clear();
+    }
+    sendLinkStates();sendRoster();return msg(res,200,{ok:true,globalEnabled:globalLinkEnabled,mode:accessMode,link:linkStatus(s)});
+  }
+  if(route==='/api/link/exclusive'){
+    if(!isAdmin(s))return error(res,403,'Solo Gabriela puede cambiar el modo del enlace.');
+    if(!validLink)return error(res,409,'Configura TELEGRAM_LINK en Railway antes de habilitar el enlace.');
+    globalLinkEnabled=true;
+    accessMode='exclusive';
+    sendLinkStates();sendRoster();return msg(res,200,{ok:true,globalEnabled:true,mode:accessMode,link:linkStatus(s)});
   }
   if(route==='/api/link/person'){
     if(!isAdmin(s))return error(res,403,'Solo Gabriela puede elegir quién entra.');
     const target=[...sessions.values()].find(x=>online(x)&&x.nick&&key(x.nick)===key(clean(body.nick,22)));
     if(!target)return error(res,404,'Ese nick no está conectado.');
     if(typeof body.enabled!=='boolean')return error(res,400,'Estado inválido.');
-    permissions.set(target.id,body.enabled);sendLinkStates();sendRoster();return msg(res,200,{ok:true,nick:target.nick,enabled:body.enabled});
+    if(body.enabled){
+      if(!validLink)return error(res,409,'Configura TELEGRAM_LINK en Railway antes de habilitar el enlace.');
+      // Activar a alguien funciona incluso si el enlace estaba apagado.
+      // Pasa a exclusivo para evitar habilitar involuntariamente a todos.
+      globalLinkEnabled=true;
+      accessMode='exclusive';
+    }
+    permissions.set(target.id,body.enabled);
+    sendLinkStates();sendRoster();return msg(res,200,{ok:true,nick:target.nick,enabled:body.enabled,mode:accessMode,link:linkStatus(s)});
   }
   if(route==='/api/challenge/join'){
     if(!online(s)||!s.nick)return error(res,403,'Necesitas registrar un nick para participar.');
@@ -247,7 +279,7 @@ const server=http.createServer((req,res)=>{
   }
   if(req.method==='GET'&&route==='/api/config'){
     if(!s)return error(res,401,'Primero abre la página principal.');
-    return msg(res,200,{name:NAME,button:BUTTON,chatTitle:CHAT_TITLE,welcome:CHAT_WELCOME,shout:SHOUT,link:linkStatus(s),mode:LINK_MODE});
+    return msg(res,200,{name:NAME,button:BUTTON,chatTitle:CHAT_TITLE,welcome:CHAT_WELCOME,shout:SHOUT,link:linkStatus(s),mode:accessMode});
   }
   if(req.method==='GET'&&route==='/api/stream'){
     if(!s)return error(res,401,'Primero abre la página principal.');
@@ -280,5 +312,5 @@ const server=http.createServer((req,res)=>{
   }
   error(res,404,'No encontrado.');
 });
-server.listen(PORT,'0.0.0.0',()=>console.log(`Únete BB v6 · puerto ${PORT} · mode ${LINK_MODE}`));
+server.listen(PORT,'0.0.0.0',()=>console.log(`Únete BB v6.2 · puerto ${PORT} · mode ${accessMode}`));
 setInterval(()=>{const expire=Date.now()-86400000;for(const [id,s] of sessions){if(!online(s)&&!s.nick&&s.lastSeen<expire){sessions.delete(id);permissions.delete(id);}}},600000).unref();

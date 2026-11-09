@@ -4,7 +4,7 @@
   const el = (tag,cls,text) => { const x=document.createElement(tag);if(cls)x.className=cls;if(text!==undefined)x.textContent=text;return x;};
   let nick = '';
   let admin = false;
-  let link = {enabled:false,configured:false,globalEnabled:false,mode:'exclusive'};
+  let link = {enabled:false,configured:false,globalEnabled:false,mode:'exclusive',needsNick:true,adminAccess:false};
   let challenge = null;
   let online = false;
   let registered = 0;
@@ -28,13 +28,16 @@
     btn.setAttribute('aria-disabled',String(!enabled));
     if(enabled){btn.href='/join';btn.target='_blank';btn.rel='noopener noreferrer';btn.removeAttribute('tabindex');}
     else{btn.removeAttribute('href');btn.setAttribute('tabindex','-1');}
-    $('ctaLabel').textContent=!link.configured?'Enlace pendiente 💌':enabled?buttonText:'🔒 Enlace deshabilitado';
-    $('linkStatus').textContent=!link.configured?'⚠️ El enlace no está configurado':enabled?'🟢 Invitación habilitada para ti':!link.globalEnabled?'🔒 Enlace apagado para todos':'🔒 Gabriela aún no habilitó tu acceso';
+    $('ctaLabel').textContent=!link.configured?'Enlace pendiente 💌':enabled?buttonText:link.needsNick?'💬 Registra tu nick para entrar':'🔒 Enlace deshabilitado';
+    $('linkStatus').textContent=!link.configured?'⚠️ TELEGRAM_LINK no está configurado':!link.globalEnabled?'🔒 Enlace apagado para todos':link.needsNick?'💬 Primero entra al chat con tu nick para activar el botón':enabled?'🟢 Invitación habilitada para ti':link.mode==='exclusive'?'🎯 Gabriela debe autorizar tu nick':'🔒 Gabriela bloqueó el acceso para tu nick';
     $('linkStatus').classList.toggle('off',!enabled);
     $('noticeJoin').hidden=!enabled;
-    $('globalToggle').textContent=link.globalEnabled?'🔒 Apagar':'🔓 Encender';
-    $('globalLinkLabel').textContent=link.globalEnabled?'🟢 Enlace general encendido':'🔒 Enlace general apagado';
-    $('linkModeLabel').textContent=link.mode==='exclusive'?'Modo exclusivo: el enlace solo se activa a los nicks que Gabriela habilite.':'Modo público: todos pueden entrar excepto los nicks bloqueados.';
+    const modeLabel=!link.configured?'⚠️ Falta configurar TELEGRAM_LINK':!link.globalEnabled?'🔒 APAGADO PARA TODOS':link.mode==='public'?'🟢 HABILITADO PARA TODOS LOS NICKS':'🎯 SOLO NICKS AUTORIZADOS';
+    $('globalLinkLabel').textContent=modeLabel;
+    $('linkModeLabel').textContent=link.mode==='exclusive'?'Modo exclusivo: Gabriela y los nicks que autorice pueden entrar.':'Modo público: todos los visitantes con nick registrado pueden entrar, salvo los bloqueados.';
+    $('enableAll').disabled=!!link.globalEnabled&&link.mode==='public';
+    $('disableAll').disabled=!link.globalEnabled;
+    $('exclusiveMode').disabled=!!link.globalEnabled&&link.mode==='exclusive';
   }
   function showIdentity(){
     const valid=nick.length>=2;
@@ -127,7 +130,7 @@
     lastEpicTimeout=setTimeout(()=>{$('overlay').hidden=true;$('telegramButton').classList.remove('beat');},6500);
   }
   async function action(route,body={},success){
-    try{const result=await api(route,body);if(success)tell(success,true);return result;}
+    try{const result=await api(route,body);if(result.link)updateLink(result.link);if(success)tell(success,true);return result;}
     catch(e){tell(e.message);return null;}
   }
   async function boot(){
@@ -176,12 +179,18 @@
   });
   $('epicButton').addEventListener('click',async()=>{await action('/api/epic',{},'Animación enviada a todos ✨');});
   $('closeOverlay').addEventListener('click',()=>{$('overlay').hidden=true;});
-  $('globalToggle').addEventListener('click',async()=>{
-    await action('/api/link/global',{enabled:!link.globalEnabled},'Estado del enlace actualizado 💗');
+  $('enableAll').addEventListener('click',async()=>{
+    await action('/api/link/global',{enabled:true},'🔓 Enlace activado para todos los nicks registrados 💗');
+  });
+  $('disableAll').addEventListener('click',async()=>{
+    await action('/api/link/global',{enabled:false},'🔒 Enlace deshabilitado para todos.');
+  });
+  $('exclusiveMode').addEventListener('click',async()=>{
+    await action('/api/link/exclusive',{},'🎯 Ahora solo entran los nicks autorizados por Gabriela.');
   });
   async function permission(enabled){
     const target=$('targetNick').value;if(!target){tell('Primero elige un nick conectado.');return;}
-    await action('/api/link/person',{nick:target,enabled},enabled?`Acceso habilitado para ${target} 🔓`:`Acceso deshabilitado para ${target} 🔒`);
+    await action('/api/link/person',{nick:target,enabled},enabled?`🔓 Acceso habilitado para ${target} en modo exclusivo`:`🔒 Acceso deshabilitado para ${target}`);
   }
   $('allowNick').addEventListener('click',()=>permission(true));
   $('denyNick').addEventListener('click',()=>permission(false));
