@@ -5,32 +5,57 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#170c20">
   <meta name="description" content="Únete a nuestra comunidad en Telegram y participa en retos en vivo">
-  <title>Únete, bb 💗</title>
-  <link rel="stylesheet" href="/style.css?v=6.5.0">
-  <script src="/app.js?v=6.5.0" defer></script>
+  <title>La conquista de Gabriela 💘 | Únete BB</title>
+  <link rel="stylesheet" href="/style.css?v=6.6.0">
+  <script src="/app.js?v=6.6.0" defer></script>
 </head>
 <body>
   <div class="ambient" aria-hidden="true"><div class="orb orb-a"></div><div class="orb orb-b"></div><div class="orb orb-c"></div><div class="stars"></div></div>
   <div class="overlay" id="overlay" hidden role="dialog" aria-modal="true" aria-label="Invitación de Gabriela">
     <div class="overlay-card"><div class="superstar">💖</div><div class="eyebrow">INVITACIÓN ESPECIAL</div><strong class="huge">GABRIELA</strong><p id="overlayShout">entra bb 💕</p><div class="overlay-description">Gabriela acaba de enviar un mensaje especial a todos ✨</div><button class="btn ghost" id="closeOverlay">Seguir mirando 💗</button></div>
   </div>
+  <div class="howto-backdrop" id="howtoBackdrop" hidden></div>
+  <aside class="howto-drawer" id="howtoDrawer" role="dialog" aria-modal="true" aria-labelledby="howtoTitle" hidden>
+    <div class="drawer-header"><h2 id="howtoTitle">💘 Cómo conquistar a Gabriela</h2><button type="button" id="closeHowto" class="drawer-close" aria-label="Cerrar instrucciones">✕</button></div>
+    <div class="drawer-body">
+      <p>Una competición divertida en vivo entre los pretendientes de Gabriela. El chat, las rondas, los resultados y la final se ven públicamente.</p>
+      <ol>
+        <li><b>Elige un nick</b> en el chat. Sin nick puedes mirar, pero no competir ni abrir el enlace.</li>
+        <li><b>Espera un concurso.</b> Gabriela abre la inscripción y tú pulsas «Participar».</li>
+        <li>Con <b>al menos <span id="howtoMin">3</span> inscritos</b> (o el mínimo configurado), Gabriela inicia la competición.</li>
+        <li><b>Juega 3 rondas</b> si es un reto de preguntas. En «Memoria», observa primero la secuencia y luego responde.</li>
+        <li>El <b>finalista aparece en el marcador.</b> Ganar no garantiza entrar al grupo privado: <b>Gabriela decide</b> a quién autoriza.</li>
+      </ol>
+      <div class="drawer-tip">🎮 Hay preguntas, adivinanzas, emojis, memoria, secuencias, suerte, velocidad y eliminatorias. 💬 Puedes reaccionar y conversar mientras esperas.</div>
+    </div>
+    <button type="button" id="gotItHowto" class="btn drawer-done">¡Entendido, voy a conquistarla! 💗</button>
+  </aside>
+  <div class="live-toast" id="liveToast" hidden role="status"></div>
   <main class="page">
     <section class="hero card" id="hero">
       <div class="hero-top"><span class="pill">💌 Invitación especial</span><span class="live-dot">EN VIVO</span></div>
-      <div class="heart">💗</div><h1>Únete, bb <span>💕</span></h1>
-      <p>Te esperamos en <strong id="communityName">nuestra comunidad</strong>. Entra, conversa y diviértete por aquí 👀</p>
+      <div class="heart">💗</div><h1>Conquista a Gabriela <span>💕</span></h1>
+      <p>¿Tienes lo necesario para ganar su atención? 💘 Compite en vivo, diviértete y quizás Gabriela te invite a <strong id="communityName">su comunidad</strong>.</p>
       <a class="btn cta" id="telegramButton" aria-disabled="true" tabindex="-1"><span class="telegram-plane">✈</span><span id="ctaLabel">Cargando enlace...</span></a>
       <div class="link-state" id="linkStatus">Comprobando invitación...</div>
       <div class="tiny">Primero registra tu nick en el chat para entrar a Telegram ✨</div>
     </section>
 
+    <section class="card warmup" aria-label="Rompehielos mientras esperas">
+      <div class="section-head"><div><span class="overline">PARA EMPEZAR</span><h2>💌 Calienta motores</h2></div><span class="mini-pill">Sin inscripción</span></div>
+      <p class="hint">¿Te animas a impresionarla? Prueba una frase divertida para romper el hielo.</p>
+      <blockquote class="ice-question" id="iceQuestion">¿Qué harías para conquistar a Gabriela sin usar la palabra «amor»? 👀</blockquote>
+      <div class="two-buttons"><button type="button" class="btn game" id="anotherIce">🎲 Otro reto</button><button type="button" class="btn magic" id="useIce">💬 Responder en chat</button></div>
+    </section>
+
     <section class="card challenge" aria-label="Reto en vivo">
-      <div class="section-head"><div><span class="overline">MINIJUEGOS</span><h2>🎮 Reto en vivo</h2></div><span class="mini-pill" id="challengeBadge">En espera</span></div>
-      <p class="hint" id="challengeIntro">Gabriela puede activar un reto cuando haya al menos 3 personas con nick conectado.</p>
+      <div class="section-head challenge-heading"><div><span class="overline">LA CONQUISTA · EN VIVO</span><h2>🏆 Lucha por mi amor 💘</h2></div><div class="challenge-heading-right"><button type="button" class="instructions-button" id="openHowto" aria-controls="howtoDrawer" aria-expanded="false">📖 Instrucciones</button><span class="mini-pill" id="challengeBadge">En espera</span></div></div>
+      <p class="hint" id="challengeIntro">Gabriela abrirá los concursos en vivo. Registra tu nick para competir por un lugar en la gran final 💗</p>
       <div class="challenge-live" id="challengeLive" hidden>
         <div class="challenge-title" id="challengeTitle">Reto</div>
         <div class="roundline"><span id="challengePhase">Esperando jugadores...</span><span id="challengeTimer" class="timer">—</span></div>
         <p class="challenge-note" id="challengeNote"></p>
+        <div id="winnerBanner" class="winner-banner" hidden><div class="winner-crown">👑</div><strong id="winnerTitle">Finalista</strong><span id="winnerSubtitle">Gabriela decide quién recibe la invitación.</span></div>
         <div class="quiz-area" id="quizArea" hidden>
           <div class="quiz-question" id="quizQuestion"></div>
           <div class="quiz-choices" id="quizChoices" hidden></div>
@@ -48,7 +73,8 @@
         <div class="scores-head"><span>Participantes y puntuación</span><span id="scoreCount">0/3</span></div>
         <div class="scoreboard" id="scoreboard"></div>
       </div>
-      <div class="small-foot">El reto, los clasificados y el ganador se muestran públicamente en tiempo real.</div>
+      <div class="reaction-card"><div class="reaction-head"><span>💓 Apoya a tu favorito</span><small>Reacciones en vivo</small></div><div class="reaction-buttons"><button class="emoji-reaction" type="button" data-reaction="💗" aria-label="Enviar corazón">💗</button><button class="emoji-reaction" type="button" data-reaction="🔥" aria-label="Enviar fuego">🔥</button><button class="emoji-reaction" type="button" data-reaction="😍" aria-label="Enviar cara enamorada">😍</button><button class="emoji-reaction" type="button" data-reaction="👏" aria-label="Enviar aplausos">👏</button></div><div class="reaction-feed" id="reactionFeed" aria-live="off"></div></div>
+      <div class="small-foot">Las partidas y los resultados son públicos. Gabriela elige si habilita el enlace al ganador: no es automático ni está garantizado.</div>
     </section>
 
     <section class="card chat" aria-label="Chat público">
@@ -80,9 +106,10 @@
         <div class="admin-section">
           <strong>🏆 Organizar concurso</strong>
           <p id="registeredLabel">Registrados conectados: 0/3</p>
-          <div class="games"><button class="btn game" data-challenge="first">⚡ Primer clic</button><button class="btn game" data-challenge="taps">🔥 Toques 10s</button><button class="btn game" data-challenge="knockout">🏆 Eliminatoria</button><button class="btn game" data-challenge="trivia">🧠 Preguntas</button><button class="btn game" data-challenge="math">🔢 Matemáticas</button><button class="btn game" data-challenge="scramble">🔤 Palabra revuelta</button><button class="btn game" data-challenge="riddle">🕵️ Adivinanzas</button></div>
+          <div class="games"><button class="btn game" data-challenge="first">⚡ Primer clic</button><button class="btn game" data-challenge="taps">🔥 Toques 10s</button><button class="btn game" data-challenge="knockout">🏆 Eliminatoria</button><button class="btn game" data-challenge="trivia">🧠 Preguntas</button><button class="btn game" data-challenge="math">🔢 Matemáticas</button><button class="btn game" data-challenge="scramble">🔤 Palabra revuelta</button><button class="btn game" data-challenge="riddle">🕵️ Adivinanzas</button><button class="btn game" data-challenge="romance">💘 Código del ligue</button><button class="btn game" data-challenge="emoji">💌 Descifra emojis</button><button class="btn game" data-challenge="sequence">🧩 Secuencias</button><button class="btn game" data-challenge="memory">👀 Memoria de emojis</button><button class="btn game" data-challenge="luck">🍀 Suerte del amor</button></div>
           <div class="two-buttons"><button class="btn allow" id="startChallenge">▶️ Iniciar ronda</button><button class="btn deny" id="cancelChallenge">✖ Cancelar reto</button></div>
-          <small>Elige un reto, espera a que haya al menos 3 inscritos y pulsa iniciar. Los nuevos concursos tienen 3 rondas y 1 respuesta por participante en cada ronda.</small>
+          <button class="btn prize-button" id="awardWinner" hidden>💌 Dar acceso privado al ganador</button>
+          <small>Elige un reto, espera a que haya al menos 3 inscritos y pulsa iniciar. Los juegos de preguntas, memoria, suerte y emojis tienen 3 rondas. El ganador queda como finalista; tú decides si le das acceso al grupo privado.</small>
         </div>
       </div>
       <div class="messages" id="messages" role="log" aria-live="polite"><div class="empty" id="empty">💬 No hay mensajes todavía<br>¡Sé el primero en saludar!</div></div>
@@ -100,7 +127,7 @@
         <div class="feedback" id="feedback" role="status"></div>
       </div>
     </section>
-    <footer>Hecho para compartir, reír y conversar 💗</footer>
+    <footer>Una competencia para reír, conocer gente y pasarla bien 💗 · La invitación al grupo queda a criterio de Gabriela.</footer>
   </main>
 </body>
 </html>

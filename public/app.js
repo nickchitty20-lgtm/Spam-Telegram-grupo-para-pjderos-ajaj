@@ -15,11 +15,39 @@
   let buttonText = 'Únete, bb 💗';
   let lastEpicTimeout = null;
   const seen = new Set();
-  const quizTypes = ['trivia','math','scramble','riddle'];
+  const quizTypes = ['trivia','math','scramble','riddle','romance','emoji','sequence','memory','luck'];
+  const choiceTypes=['trivia','romance','emoji','sequence','memory','luck'];
   let lastQuizKey = '';
   let quizBusy = false;
   let typingStopTimer = null;
   let lastTypingAt = 0;
+  let toastTimer = null;
+  const icePrompts = [
+    '💘 ¿Cómo describirías tu cita ideal en cinco palabras?',
+    '🌹 Convéncela con tu piropo más original (sin ser pesado).',
+    '😎 ¿Qué canción elegirías para una primera cita?',
+    '💌 Escribe una invitación graciosa que no incluya la palabra «amor».',
+    '🍕 ¿Pizza, café o karaoke? Defiende tu elección.',
+    '🎬 Si tu historia romántica fuera una película, ¿cómo se llamaría?',
+    '😂 ¿Qué harías si Gabriela te deja en visto 10 minutos?',
+    '🔥 ¿Cuál es tu mejor habilidad secreta para impresionar a alguien?',
+    '💜 Cuenta tu anécdota de cita más divertida sin revelar datos personales.',
+    '🎲 ¿Qué superpoder elegirías para una cita perfecta?'
+  ];
+  let iceIndex=0;
+  function popToast(text){
+    const toast=$('liveToast');toast.textContent=text;toast.hidden=false;
+    if(toastTimer)clearTimeout(toastTimer);
+    toastTimer=setTimeout(()=>toast.hidden=true,3600);
+  }
+  function openHowto(){
+    $('howtoBackdrop').hidden=false;$('howtoDrawer').hidden=false;
+    $('openHowto').setAttribute('aria-expanded','true');$('closeHowto').focus();
+  }
+  function closeHowto(){
+    $('howtoBackdrop').hidden=true;$('howtoDrawer').hidden=true;
+    $('openHowto').setAttribute('aria-expanded','false');$('openHowto').focus();
+  }
 
 
   async function api(route, body) {
@@ -128,14 +156,22 @@
     $('challengeLive').hidden=!challenge;
     $('quizArea').hidden=!challenge || !quizTypes.includes(challenge.type);
     if(!challenge)lastQuizKey='';
+    $('winnerBanner').hidden=!challenge||challenge.phase!=='finished'||!challenge.winner;
+    $('awardWinner').hidden=!(admin&&challenge&&challenge.phase==='finished'&&challenge.winner);
+    $('awardWinner').disabled=!!challenge?.prizeGranted;
+    $('awardWinner').textContent=challenge?.prizeGranted?'✅ Acceso concedido al finalista':'💌 Dar acceso privado al ganador';
+    if(challenge?.phase==='finished'&&challenge.winner){
+      $('winnerTitle').textContent=challenge.winner+' · Finalista 💘';
+      $('winnerSubtitle').textContent=challenge.prizeGranted?'Gabriela le habilitó la invitación al grupo 🔓':'Gabriela decidirá si le habilita el grupo privado 💌';
+    }
     $('challengeIntro').hidden=!!challenge;
-    $('challengeBadge').textContent=challenge?({signup:'Inscripciones',countdown:'Preparados',active:'Jugando',between:'Eliminando',finished:'Finalizado'}[challenge.phase]||'Reto'):'En espera';
+    $('challengeBadge').textContent=challenge?({signup:'Inscripciones',countdown:'Preparados',preview:'Memoriza 👀',active:'Jugando',between:'Siguiente ronda',finished:'Finalizado'}[challenge.phase]||'Reto'):'En espera';
     const start=$('startChallenge'),cancel=$('cancelChallenge');
     start.disabled=!(admin&&challenge&&challenge.phase==='signup'&&challenge.participants.length>=(challenge.minPlayers||minPlayers));
     cancel.disabled=!(admin&&challenge);
     if(!challenge)return;
     $('challengeTitle').textContent=challenge.title;
-    $('challengePhase').textContent=challenge.phase==='signup'?'Inscripción abierta':challenge.phase==='countdown'?`Ronda ${challenge.round} · Preparándose`:challenge.phase==='active'?`Ronda ${challenge.round}${challenge.totalRounds?' de '+challenge.totalRounds:''} · ¡En acción!`:challenge.phase==='between'?`Ronda ${challenge.round} finalizada`:challenge.phase==='finished'?'🏁 Resultado final':'...';
+    $('challengePhase').textContent=challenge.phase==='signup'?'Inscripción abierta':challenge.phase==='countdown'?`Ronda ${challenge.round} · Preparándose`:challenge.phase==='active'?`Ronda ${challenge.round}${challenge.totalRounds?' de '+challenge.totalRounds:''} · ¡En acción!`:challenge.phase==='preview'?`Ronda ${challenge.round} · ¡Memoriza los emojis!`:challenge.phase==='between'?`Ronda ${challenge.round} finalizada`:challenge.phase==='finished'?'🏁 Resultado final':'...';
     $('challengeNote').textContent=challenge.note||'';
     const participant=challenge.participants.find(p=>p.nick===nick);
     $('joinChallenge').hidden=challenge.phase!=='signup'||!nick||!!participant;
@@ -145,7 +181,7 @@
       const q=challenge.question;
       const active=challenge.phase==='active';
       const mayAnswer=active&&!!participant&&participant.alive&&!participant.answered;
-      const choice=challenge.type==='trivia';
+      const choice=choiceTypes.includes(challenge.type);
       $('quizQuestion').textContent=q ? q.prompt+(q.reveal?' · ✅ '+q.reveal:'') : challenge.phase==='signup'?'Inscríbete para jugar tres rondas.':challenge.phase==='countdown'?'🕓 La pregunta aparecerá en unos segundos...':'¡Ronda terminada!';
       $('quizChoices').hidden=!choice||!mayAnswer;
       $('quizForm').hidden=choice||!mayAnswer;
@@ -164,7 +200,9 @@
       }
       $('quizSubmit').disabled=quizBusy;
       $('quizInput').disabled=quizBusy;
-      if(active){
+      if(challenge.phase==='preview'){
+        $('quizFeedback').textContent='👀 Mira bien el orden. Después tendrás que recordar una posición.';
+      } else if(active){
         $('quizFeedback').textContent=participant?.answered ? `✅ Respuesta registrada · ${challenge.responded}/${challenge.participants.length} respondieron` :
           mayAnswer ? `⏳ ${challenge.responded}/${challenge.participants.length} respondieron · Tienes un intento` :
           `👀 ${challenge.responded}/${challenge.participants.length} respondieron en vivo`;
@@ -185,7 +223,7 @@
     sorted.forEach((p,i)=>{
       const item=el('div','score'+(!p.alive?' lost':'')+(challenge.phase==='finished'&&challenge.winner===p.nick?' winner':''));
       item.appendChild(el('span','',`${i+1}.`));item.appendChild(el('b','',p.nick));
-      const points=quiz?`${p.score} ${p.score===1?'acierto':'aciertos'}${p.answered&&challenge.phase==='active'?' · ✓':''}`:
+      const points=quiz?`${p.score} ${p.score===1?'punto':'puntos'}${p.answered&&challenge.phase==='active'?' · ✓':''}`:
         `${p.score} ${p.score===1?'toque':'toques'}`;
       item.appendChild(el('span','points',p.alive?points:'ELIMINADO'));
       sb.appendChild(item);
@@ -244,11 +282,12 @@
       const config=await (await fetch('/api/config')).json();
       if(config.error)throw new Error(config.error);
       $('communityName').textContent=config.name;
-      document.title=`${config.name} | Únete, bb 💗`;
+      document.title=`La conquista de Gabriela 💘 | ${config.name}`;
       $('chatTitle').textContent=config.chatTitle;
       $('chatWelcome').textContent=config.welcome;
       buttonText=config.button;shout=config.shout;
       if(Number.isInteger(config.minPlayers)) minPlayers=config.minPlayers;
+      $('howtoMin').textContent=String(minPlayers);
       updateLink(config.link);
     }catch{tell('No se pudo cargar la configuración del sitio.');}
     const stream=new EventSource('/api/stream');
@@ -268,8 +307,46 @@
     stream.addEventListener('challenge-state',e=>{try{challenge=JSON.parse(e.data);drawChallenge();}catch{}});
     stream.addEventListener('gabriela-epic',()=>doEpic());
     stream.addEventListener('typing',e=>{try{renderTyping(JSON.parse(e.data).nicks);}catch{}});
+    stream.addEventListener('live-reaction',e=>{try{showReaction(JSON.parse(e.data));}catch{}});
+    stream.addEventListener('winner-prize',e=>{try{popToast('💌 Gabriela invitó a '+JSON.parse(e.data).nick+' al grupo privado');}catch{}});
   }
 
+  $('openHowto').addEventListener('click',openHowto);
+  $('closeHowto').addEventListener('click',closeHowto);
+  $('gotItHowto').addEventListener('click',closeHowto);
+  $('howtoBackdrop').addEventListener('click',closeHowto);
+  document.addEventListener('keydown',e=>{
+    if($('howtoDrawer').hidden)return;
+    if(e.key==='Escape'){closeHowto();return;}
+    if(e.key==='Tab'){
+      const focusables=[$('closeHowto'),$('gotItHowto')];
+      const first=focusables[0], last=focusables[focusables.length-1];
+      if(e.shiftKey&&document.activeElement===first){e.preventDefault();last.focus();}
+      else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first.focus();}
+    }
+  });
+  $('iceQuestion').textContent=icePrompts[0];
+  $('anotherIce').addEventListener('click',()=>{
+    let next=iceIndex;
+    while(next===iceIndex) next=Math.floor(Math.random()*icePrompts.length);
+    iceIndex=next;$('iceQuestion').textContent=icePrompts[iceIndex];
+  });
+  $('useIce').addEventListener('click',()=>{
+    if(!nick){tell('Primero registra tu nick para responder en el chat 💗');$('nickForm').scrollIntoView({behavior:'smooth',block:'center'});$('nickInput').focus();return;}
+    $('messageInput').value=icePrompts[iceIndex]+' — ';
+    $('messageForm').scrollIntoView({behavior:'smooth',block:'center'});$('messageInput').focus();
+  });
+  const reactionFeed=$('reactionFeed');
+  function showReaction(data){
+    if(!data||!['💗','🔥','😍','👏'].includes(data.emoji))return;
+    const chip=el('span','reaction-chip',data.emoji+' '+(data.nick||'Visitante'));
+    reactionFeed.appendChild(chip);
+    while(reactionFeed.children.length>4)reactionFeed.firstElementChild.remove();
+    setTimeout(()=>{chip.remove();},2900);
+  }
+  document.querySelectorAll('[data-reaction]').forEach(button=>button.addEventListener('click',async()=>{
+    try{await api('/api/reaction',{emoji:button.dataset.reaction});}catch(e){tell(e.message);}
+  }));
   $('nickInput').addEventListener('input',()=>{$('pinRow').hidden=$('nickInput').value.trim().toLocaleLowerCase('es')!=='gabriela';});
   $('nickForm').addEventListener('submit',async e=>{e.preventDefault();await claim($('nickInput').value);});
   $('changeNick').addEventListener('click',async()=>{
@@ -316,6 +393,11 @@
   document.querySelectorAll('[data-challenge]').forEach(b=>b.addEventListener('click',async()=>{
     await action('/api/challenge/open',{type:b.dataset.challenge},'Reto abierto: invita a todos a participar 🎮');
   }));
+  $('awardWinner').addEventListener('click',async()=>{
+    if(!challenge?.winner || !admin)return;
+    if(!confirm('¿Habilitar el acceso privado a '+challenge.winner+'? Gabriela conserva el control del enlace.'))return;
+    await action('/api/challenge/prize',{},'💌 Invitación privada concedida al ganador');
+  });
   $('startChallenge').addEventListener('click',async()=>{await action('/api/challenge/start',{},'¡Reto comenzando! 🔥');});
   $('cancelChallenge').addEventListener('click',async()=>{await action('/api/challenge/cancel',{},'Reto cancelado.');});
   $('joinChallenge').addEventListener('click',async()=>{await action('/api/challenge/join',{},'¡Inscrito! A preparar el reto 💗');});

@@ -94,3 +94,43 @@ input:focus,select:focus {border-color:#ee80c1;outline:2px solid #f269be30} inpu
 .typing-dots i:nth-child(2){animation-delay:.16s}.typing-dots i:nth-child(3){animation-delay:.32s}
 @keyframes typing {50%{opacity:.25;transform:translateY(-3px)}}
 @media(max-width:365px){.quiz-choices {grid-template-columns:1fr}.quiz-form{flex-direction:column}.quiz-submit{width:100%}}
+
+/* v6.6 — La conquista de Gabriela: experiencia pública para adultos */
+.warmup {padding:18px 16px 15px;position:relative;overflow:hidden}
+.warmup::before {content:'💌';position:absolute;right:13px;bottom:-10px;font-size:85px;opacity:.055;transform:rotate(-18deg);pointer-events:none}
+.ice-question {margin:9px 0 12px;padding:13px 14px;line-height:1.5;border-radius:13px;border:1px solid #fc94c455;background:linear-gradient(125deg,#ff55a222,#8541b728);color:#ffe3f1;font-size:14px;font-weight:650}
+.challenge-heading {align-items:flex-start}
+.challenge-heading-right {display:flex;align-items:flex-end;flex-direction:column;gap:8px;min-width:109px}
+.challenge-heading-right .mini-pill {margin:0}
+.instructions-button {background:#3e254a;border:1px solid #f9add270;color:#ffe0f0;cursor:pointer;border-radius:999px;padding:9px 11px;font:inherit;font-size:11px;font-weight:800;white-space:nowrap;transition:background .15s}
+.instructions-button:hover {background:#68345b}
+.instructions-button:focus-visible,.drawer-close:focus-visible,.emoji-reaction:focus-visible {outline:2px solid #ffa8d3;outline-offset:3px}
+.winner-banner {margin:12px 0;padding:16px 11px;border:1px solid #f8c77880;border-radius:16px;background:radial-gradient(circle at 50% -30%,#ffde8b39,#d64b8e25 70%);text-align:center;box-shadow:0 10px 30px #9f338c20;animation:winner-in .5s ease}
+.winner-banner strong {display:block;color:#fff2ca;font-size:18px;margin:6px 0}
+.winner-banner span {font-size:12px;color:#f3d6ed;line-height:1.5}
+.winner-crown {font-size:35px;filter:drop-shadow(0 6px 10px #e9a94655)}
+@keyframes winner-in {from{opacity:0;transform:scale(.94)}to{opacity:1;transform:scale(1)}}
+.prize-button {width:100%;margin-top:9px;background:linear-gradient(90deg,#b4762b,#cc4c99);font-size:13px;min-height:45px}
+.reaction-card {margin-top:15px;padding:11px;border:1px solid #f89bcb37;background:#ffffff08;border-radius:13px}
+.reaction-head {display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:12px;font-weight:850;color:#ffb8d9}
+.reaction-head small {font-size:10px;color:#bba7b9;font-weight:550}
+.reaction-buttons {display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin:10px 0 2px}
+.emoji-reaction {background:#703a6b72;border:1px solid #ffd9ed31;border-radius:12px;min-height:40px;font-size:21px;cursor:pointer;transition:transform .15s,background .15s}
+.emoji-reaction:hover {transform:scale(1.1);background:#994c83a1}
+.reaction-feed {display:flex;align-items:center;gap:5px;flex-wrap:wrap;min-height:0}
+.reaction-chip {background:#4b2248;border-radius:999px;padding:5px 8px;color:#ffdbef;font-size:10px;max-width:100%;overflow-wrap:anywhere;animation:reaction-in .25s ease-out}
+@keyframes reaction-in {from{opacity:0;transform:translateY(7px) scale(.9)}to{opacity:1;transform:translateY(0) scale(1)}}
+.howto-backdrop {position:fixed;inset:0;z-index:70;background:#080313b9;backdrop-filter:blur(5px)}
+.howto-drawer {position:fixed;z-index:71;top:0;right:0;bottom:0;width:min(100%,420px);overflow:auto;display:flex;flex-direction:column;gap:15px;background:linear-gradient(160deg,#381932,#181326);border-left:1px solid #ff9cc361;padding:23px 18px max(24px,env(safe-area-inset-bottom));box-shadow:-15px 0 60px #05000892;animation:drawer-in .22s ease-out}
+@keyframes drawer-in {from{transform:translateX(100%)}to{transform:translateX(0)}}
+.drawer-header {display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.drawer-header h2 {margin:0;font-size:23px;line-height:1.25;color:#ffe1ef}
+.drawer-close {border:1px solid #ffb2d169;background:#ffffff16;border-radius:50%;width:38px;height:38px;color:white;cursor:pointer;font-size:20px;flex-shrink:0}
+.drawer-body {flex:1;color:#e8d4e9;font-size:13px;line-height:1.65}
+.drawer-body ol {padding-left:24px;display:flex;flex-direction:column;gap:11px}
+.drawer-body b {color:#fff0f7}
+.drawer-tip {margin-top:18px;background:#e34e892b;border:1px solid #ffa6d15e;border-radius:14px;padding:14px;color:#ffe2f1}
+.drawer-done {width:100%;background:linear-gradient(90deg,#ef4c96,#a652c4);min-height:48px}
+.live-toast {position:fixed;bottom:16px;left:50%;transform:translateX(-50%);z-index:65;width:max-content;max-width:calc(100% - 32px);background:#4e264e;border:1px solid #ffc5da8c;box-shadow:0 10px 35px #10031bc0;border-radius:14px;padding:12px 16px;text-align:center;color:#ffe5f0;font-size:13px;font-weight:800;animation:reaction-in .25s ease-out}
+@media (max-width:400px){.challenge-heading-right{min-width:96px}.instructions-button{padding:8px 7px;font-size:10px}.warmup{padding:15px 12px}.drawer-header h2{font-size:21px}}
+@media (prefers-reduced-motion:reduce){.howto-drawer,.winner-banner,.reaction-chip,.live-toast{animation:none!important}}
