@@ -31,7 +31,7 @@ const safeLink = escapeHtml(telegramLink);
 const title = `${safeName} | Únete, bb 💗`;
 
 // El historial vive solo en esta instancia. Se reinicia al redesplegar Railway.
-const clients = new Set();
+const clients = new Map(); // respuesta SSE -> id efímero del navegador (para no contar pestañas duplicadas)
 const history = [];
 const lastMessageByIp = new Map();
 const MAX_MESSAGES = 100;
@@ -48,11 +48,15 @@ function sendSSE(res, event, payload) {
   catch { return false; }
 }
 function broadcast(event, payload) {
-  for (const client of clients) {
+  for (const client of clients.keys()) {
     if (!sendSSE(client, event, payload)) clients.delete(client);
   }
 }
-function broadcastPresence() { broadcast('presence', { online: clients.size }); }
+function broadcastPresence() {
+  // Visitas con conexión SSE abierta. Distintas pestañas de un mismo navegador cuentan una vez.
+  const online = new Set(clients.values()).size;
+  broadcast('presence', { online });
+}
 function json(res, status, data, extra = {}) {
   res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8',
     'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', ...extra });
@@ -73,8 +77,21 @@ const html = `<!doctype html>
 <style>
 :root { color-scheme: dark; font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
 * { box-sizing: border-box; }
-body { min-height:100vh; margin:0; padding:24px 14px 36px; background:radial-gradient(ellipse at 50% 0%, #572247 0%, transparent 55%), linear-gradient(160deg,#190f23,#100b19 90%); color:#fff; }
-.page { width:min(100%,460px); margin:0 auto; }
+body { min-height:100vh; margin:0; padding:24px 14px 36px; background:#110b1a; color:#fff; overflow-x:hidden; }
+/* Fondo animado de auroras difusas, sin imágenes ni librerías externas. */
+.ambient { position:fixed; inset:0; z-index:0; overflow:hidden; pointer-events:none; background:radial-gradient(circle at 15% 15%,#4e224b 0,transparent 40%),radial-gradient(circle at 88% 80%,#242653 0,transparent 48%); animation:ambient-hue 18s ease-in-out infinite alternate; }
+.orb { position:absolute; width:55vw; height:55vw; max-width:440px; max-height:440px; min-width:240px; min-height:240px; border-radius:50%; filter:blur(28px); opacity:.44; will-change:transform; }
+.orb-one { top:-120px; left:-110px; background:radial-gradient(circle,#f13a8a9c,transparent 68%); animation:orb-one 20s ease-in-out infinite alternate; }
+.orb-two { right:-130px; top:27%; background:radial-gradient(circle,#8a42e4aa,transparent 68%); animation:orb-two 25s ease-in-out infinite alternate; }
+.orb-three { bottom:-210px; left:6%; background:radial-gradient(circle,#f5629a66,transparent 66%); animation:orb-three 23s ease-in-out infinite alternate; }
+.stardust { position:absolute; inset:0; opacity:.42; background-image:radial-gradient(#ffdaee 1px, transparent 1px),radial-gradient(#f9a9ff 1px,transparent 1px); background-size:105px 115px,165px 177px; background-position:0 0,45px 70px; animation:stardust 30s linear infinite; }
+@keyframes ambient-hue { to { filter:hue-rotate(18deg); } }
+@keyframes orb-one { to { transform:translate(35vw,24vh) scale(1.22); } }
+@keyframes orb-two { to { transform:translate(-33vw,-25vh) scale(.84); } }
+@keyframes orb-three { to { transform:translate(20vw,-30vh) scale(1.12); } }
+@keyframes stardust { to { background-position:80px -135px,-55px -170px; } }
+@media (prefers-reduced-motion:reduce) { .ambient,.orb,.stardust { animation:none !important; } }
+.page { position:relative; z-index:1; width:min(100%,460px); margin:0 auto; }
 .card { border:1px solid #ffffff25; border-radius:24px; background:#ffffff0d; box-shadow:0 24px 70px #0004; backdrop-filter:blur(10px); }
 .hero { padding:32px 23px 23px; text-align:center; }
 .badge { display:inline-block; padding:7px 12px; background:#fa4e961c; border:1px solid #fa8dbc50; border-radius:999px; font-size:12px; color:#ffc0d9; font-weight:700; }
@@ -89,8 +106,14 @@ h1 { font-size:clamp(33px,8vw,47px); letter-spacing:-.05em; line-height:1.1; mar
 .chat { margin-top:15px; padding:18px 15px 14px; }
 .chat-top { display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:13px; }
 .chat-top h2 { font-size:18px; letter-spacing:-.02em; margin:0; overflow-wrap:anywhere; }
-.live { font-size:11px; color:#ffb4cf; background:#ff4c981a; border:1px solid #f779aa42; border-radius:20px; padding:5px 9px; font-weight:700; }
-.live:before { content:'●'; margin-right:5px; color:#fb689f; }
+.online-meter { display:inline-flex; align-items:center; gap:5px; flex-shrink:0; font-size:12px; color:#f8c4dc; background:#ff4c9820; border:1px solid #f779aa60; border-radius:999px; padding:7px 11px; font-weight:800; font-variant-numeric:tabular-nums; box-shadow:0 0 14px #ed4a8e17; }
+.online-meter svg { width:16px; height:16px; fill:none; stroke:currentColor; stroke-width:1.9; stroke-linecap:round; stroke-linejoin:round; }
+.online-meter .num { color:#fff; font-size:14px; min-width:1ch; text-align:right; }
+.online-meter .online-label { font-size:10px; font-weight:600; }
+.online-meter.offline { color:#b9a4b9; border-color:#ffffff2e; background:#ffffff0c; }
+.online-meter:not(.offline)::before { content:''; width:6px; height:6px; background:#62e2ac; border-radius:50%; box-shadow:0 0 8px #62e2ac; animation:glow 2s ease-in-out infinite; }
+@keyframes glow { 50% { opacity:.35; } }
+@media (prefers-reduced-motion:reduce) { .online-meter::before { animation:none !important; } }
 .notice { background:#ff4c9812; border:1px solid #ff86b535; border-radius:12px; padding:11px 12px; margin-bottom:12px; }
 .notice strong { color:#ffb8d4; font-size:12px; }
 .notice p { margin:5px 0 0; color:#f3c7df; line-height:1.45; font-size:13px; overflow-wrap:anywhere; white-space:pre-wrap; }
@@ -120,6 +143,7 @@ input::placeholder { color:#ae97aa; }
 </style>
 </head>
 <body>
+<div class="ambient" aria-hidden="true"><span class="orb orb-one"></span><span class="orb orb-two"></span><span class="orb orb-three"></span><span class="stardust"></span></div>
 <main class="page">
 <section class="card hero">
   <span class="badge">💌 Invitación especial</span>
@@ -130,7 +154,7 @@ input::placeholder { color:#ae97aa; }
   <div class="small">Te lleva directamente a Telegram ✈️</div>
 </section>
 <section class="card chat" aria-label="Chat público de la página">
-  <div class="chat-top"><h2>${escapeHtml(chatTitle)}</h2><span class="live" id="presence">Conectando...</span></div>
+  <div class="chat-top"><h2>${escapeHtml(chatTitle)}</h2><div class="online-meter offline" id="presence" role="status" aria-label="Personas conectadas al chat" title="Sesiones conectadas en tiempo real"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg><span class="num" id="onlineNumber">—</span><span class="online-label">en línea</span></div></div>
   <div class="notice"><strong>📌 Mensaje de la página</strong><p>${escapeHtml(chatWelcome)}</p>${telegramLink ? `<a href="${safeLink}" target="_blank" rel="noopener noreferrer">${safeCta} ↗</a>` : ''}</div>
   <div class="messages" id="messages" role="log" aria-live="polite"><div class="empty" id="empty">💬 Todavía no hay mensajes.<br>¡Sé el primero en saludar!</div></div>
   <div class="entry">
@@ -151,6 +175,7 @@ input::placeholder { color:#ae97aa; }
   const messages = document.querySelector('#messages');
   const empty = document.querySelector('#empty');
   const presence = document.querySelector('#presence');
+  const onlineNumber = document.querySelector('#onlineNumber');
   const feedback = document.querySelector('#feedback');
   const nickForm = document.querySelector('#nickForm');
   const nickInput = document.querySelector('#nickInput');
@@ -188,15 +213,32 @@ input::placeholder { color:#ae97aa; }
     while (messages.querySelectorAll('.msg').length > 100) messages.querySelector('.msg').remove();
     if (wasNearBottom) messages.scrollTop = messages.scrollHeight;
   }
-  const stream = new EventSource('/api/stream');
-  stream.addEventListener('open', () => { if (presence.textContent === 'Reconectando...') presence.textContent = 'En vivo'; });
-  stream.addEventListener('error', () => { presence.textContent = 'Reconectando...'; });
+  // Un ID aleatorio por navegador evita contar dos pestañas como dos personas.
+  // No se envía a servicios externos ni se guarda en el servidor.
+  let viewerId = '';
+  try { viewerId = localStorage.getItem('bb_viewer_id') || ''; } catch {}
+  if (!/^[a-z0-9-]{16,64}$/i.test(viewerId)) {
+    viewerId = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : ('bb-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2));
+    try { localStorage.setItem('bb_viewer_id', viewerId); } catch {}
+  }
+  const stream = new EventSource('/api/stream?visitor=' + encodeURIComponent(viewerId));
+  stream.addEventListener('error', () => {
+    presence.classList.add('offline');
+    onlineNumber.textContent = '—';
+    presence.title = 'Reconectando al chat...';
+  });
   stream.addEventListener('history', e => { try {
     const data = JSON.parse(e.data);
     data.messages.forEach(addMessage);
   } catch {} });
   stream.addEventListener('message-new', e => { try { addMessage(JSON.parse(e.data)); } catch {} });
-  stream.addEventListener('presence', e => { try { const n=JSON.parse(e.data).online; presence.textContent = n + ' en la página'; } catch {} });
+  stream.addEventListener('presence', e => { try {
+    const n = JSON.parse(e.data).online;
+    if (!Number.isInteger(n) || n < 0) return;
+    onlineNumber.textContent = String(n);
+    presence.classList.remove('offline');
+    presence.title = n + ' sesión(es) de navegador conectada(s) ahora';
+  } catch {} });
   nickForm.addEventListener('submit', e => {
     e.preventDefault();
     const value = nickInput.value.replace(/\s+/g, ' ').trim();
@@ -233,7 +275,8 @@ input::placeholder { color:#ae97aa; }
 </html>`;
 
 const server = http.createServer((req, res) => {
-  const route = new URL(req.url, 'http://localhost').pathname;
+  const requestUrl = new URL(req.url, 'http://localhost');
+  const route = requestUrl.pathname;
   if (req.method === 'GET' && route === '/health') {
     res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
     res.end('OK'); return;
@@ -249,11 +292,17 @@ const server = http.createServer((req, res) => {
       'Cache-Control':'no-cache, no-transform', Connection:'keep-alive', 'X-Accel-Buffering':'no' });
     res.flushHeaders();
     res.write(': conectado\n\n');
-    clients.add(res);
+    const suppliedId = requestUrl.searchParams.get('visitor') || '';
+    const visitorId = /^[a-z0-9-]{16,64}$/i.test(suppliedId) ? suppliedId : crypto.randomUUID();
+    clients.set(res, visitorId);
     sendSSE(res, 'history', { messages:history });
     broadcastPresence();
-    const heartbeat = setInterval(() => { if (!res.destroyed) res.write(': ping\n\n'); }, 22000);
-    req.on('close', () => { clearInterval(heartbeat); if (clients.delete(res)) broadcastPresence(); });
+    const heartbeat = setInterval(() => {
+      if (res.destroyed || res.writableEnded) return;
+      try { res.write(': ping\n\n'); } catch { res.destroy(); }
+    }, 22000);
+    // El cierre pertenece a la respuesta SSE (no a la petición GET): así el contador baja correctamente.
+    res.on('close', () => { clearInterval(heartbeat); if (clients.delete(res)) broadcastPresence(); });
     return;
   }
   if (req.method === 'POST' && route === '/api/messages') {

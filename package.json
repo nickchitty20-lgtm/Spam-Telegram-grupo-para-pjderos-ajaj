@@ -1,6 +1,6 @@
 {
   "name": "unete-bb-railway",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "private": true,
   "description": "Landing para Telegram con chat anónimo en vivo",
   "scripts": { "start": "node server.js", "test": "node --check server.js" },

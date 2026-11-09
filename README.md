@@ -1,6 +1,6 @@
 # Únete, bb 💗 — landing + chat en vivo para Railway
 
-Página publicitaria para compartir un grupo o canal de Telegram, con chat público en vivo debajo del botón. Los visitantes **no necesitan registrarse**: escriben un nick (2–22 caracteres) y ya pueden enviar mensajes. Los mensajes nuevos se actualizan al instante con Server-Sent Events (SSE). No usa dependencias externas ni base de datos.
+Página publicitaria para compartir un grupo o canal de Telegram, con chat público en vivo debajo del botón, un contador 👁️ de conectados y fondo rosa/violeta animado. Los visitantes **no necesitan registrarse**: escriben un nick (2–22 caracteres) y ya pueden enviar mensajes. Los mensajes nuevos y el contador 👁️ se actualizan al instante con Server-Sent Events (SSE). No usa dependencias externas ni base de datos.
 
 ## Variables en Railway
 
@@ -33,6 +33,12 @@ TELEGRAM_NAME='Mi grupo' TELEGRAM_LINK='https://t.me/mi_grupo' npm start
 ```
 
 Abre `http://localhost:3000` en dos pestañas para probar mensajes entre usuarios.
+
+## Contador 👁️ y fondo animado
+
+El ojo muestra las **sesiones de navegador que siguen conectadas al chat ahora mismo**, sin números simulados. Varias pestañas del mismo navegador normalmente se cuentan una sola vez. Si alguien pierde conexión, el número se actualiza al reconectar o cerrar el canal SSE. No es una medida exacta de personas físicas (una persona puede usar distintos dispositivos, y un bot también puede conectarse).
+
+El fondo incluye auroras rosadas/violetas animadas y puntitos suaves. Respeta la preferencia de accesibilidad **reducir movimiento** y no necesita servicios ni imágenes de terceros.
 
 ## Avisos importantes
 
