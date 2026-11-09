@@ -53,7 +53,7 @@ function makeSession(req,res) {
   const existing = getSession(req);
   if (existing) return existing;
   const id = crypto.randomBytes(24).toString('hex');
-  const s = {id, nick:'', connections:0, clients:new Set(), disconnectTimer:null, lastSeen:Date.now(), lastMessage:0, lastTap:0, typingUntil:0, lastTypingSignal:0};
+  const s = {id, nick:'', connections:0, clients:new Set(), disconnectTimer:null, lastSeen:Date.now(), lastMessage:0, lastTap:0, typingUntil:0, lastTypingSignal:0, lastReaction:0};
   sessions.set(id,s);
   const secure = String(req.headers['x-forwarded-proto']||'').split(',')[0].trim()==='https';
   res.setHeader('Set-Cookie', `bb_sid=${id}; Path=/; HttpOnly; SameSite=Lax; Max-Age=86400${secure?'; Secure':''}`);
@@ -122,9 +122,12 @@ function clearContestTimers() { for(const timer of contestTimers) clearTimeout(t
 function later(fn,ms) { const timer=setTimeout(()=>{ contestTimers.delete(timer);fn(); },ms); contestTimers.add(timer); }
 const typeNames={
   first:'⚡ El primero en tocar', taps:'🔥 Carrera de toques', knockout:'🏆 Eliminatoria',
-  trivia:'🧠 Preguntas relámpago', math:'🔢 Cálculo exprés', scramble:'🔤 Palabras revueltas', riddle:'🕵️ Adivinanzas'
+  trivia:'🧠 Preguntas relámpago', math:'🔢 Cálculo exprés', scramble:'🔤 Palabras revueltas', riddle:'🕵️ Adivinanzas',
+  romance:'💘 Código del coqueteo', emoji:'💌 Descifra los emojis', sequence:'🧩 Secuencias del amor', memory:'👀 Memoria de corazones', luck:'🍀 Suerte del amor'
 };
-const quizTypes=new Set(['trivia','math','scramble','riddle']);
+const quizTypes=new Set(['trivia','math','scramble','riddle','romance','emoji','sequence','memory','luck']);
+const MULTIPLE_CHOICE_TYPES=new Set(['trivia','romance','emoji','sequence','memory','luck']);
+const MEMORY_PREVIEW_MS=5500;
 const TOTAL_QUIZ_ROUNDS=3;
 const QUIZ_ROUND_MS=16000;
 const quizPools={
@@ -144,6 +147,38 @@ const quizPools={
     {word:'TELEGRAM'},{word:'CORAZON'},{word:'VENTANA'},{word:'ESTRELLA'},
     {word:'MARIPOSA'},{word:'AVENTURA'},{word:'CHOCOLATE'},{word:'AMISTAD'},
     {word:'SONRISA'},{word:'FANTASMA'},{word:'GIRASOL'},{word:'MISTERIO'}
+  ],
+  romance:[
+    {prompt:'¿Qué significa hacer «ghosting»?',options:['Dejar de responder sin explicación','Mandar flores','Proponer una cita','Escribir un poema'],answers:['Dejar de responder sin explicación']},
+    {prompt:'Si alguien te dice «no», ¿cuál es la respuesta correcta?',options:['Respetarlo','Insistir 10 veces','Seguir escribiendo','Pedir explicaciones'],answers:['Respetarlo']},
+    {prompt:'¿Qué es un «match» en una app de citas?',options:['Interés mutuo','Un bloqueo','Un regalo','Una videollamada'],answers:['Interés mutuo']},
+    {prompt:'¿Qué suele significar 💚 en un chat?',options:['Corazón verde','Mensaje borrado','Llamada perdida','Bloqueo'],answers:['Corazón verde']},
+    {prompt:'Para conocer a alguien, ¿qué ayuda a conversar mejor?',options:['Preguntar y escuchar','Interrumpir siempre','Enviar spam','Ignorar respuestas'],answers:['Preguntar y escuchar']},
+    {prompt:'¿Qué significa «red flag» en relaciones?',options:['Señal de alerta','Regalo sorpresa','Plan romántico','Foto de perfil'],answers:['Señal de alerta']},
+    {prompt:'En una cita, ¿qué es lo más importante para cualquier interacción?',options:['Consentimiento','Presumir dinero','Responder por otros','Forzar un plan'],answers:['Consentimiento']},
+    {prompt:'¿Qué es un cumplido sincero?',options:['Elogio respetuoso','Un ultimátum','Una contraseña','Una amenaza'],answers:['Elogio respetuoso']},
+    {prompt:'¿Qué quiere decir «crush» en el habla de internet?',options:['Persona que te gusta','Tu contraseña','Tu ex jefe','Una cuenta falsa'],answers:['Persona que te gusta']},
+    {prompt:'¿Cuál suele ser una buena señal al conversar?',options:['Interés recíproco','Presión constante','Falta de respeto','Insultos'],answers:['Interés recíproco']}
+  ],
+  emoji:[
+    {prompt:'Descifra: 🌹 + 🍫 = ¿qué plan?',options:['Regalo romántico','Partido de fútbol','Reunión de oficina','Clase de cocina'],answers:['Regalo romántico']},
+    {prompt:'Descifra: 🎬 + 🍿 + 💑',options:['Cita de cine','Paseo en bicicleta','Examen','Concierto de rock'],answers:['Cita de cine']},
+    {prompt:'Descifra: ☕ + 💬 + ❤️',options:['Café y conversación','Carrera de autos','Viaje al espacio','Clase de boxeo'],answers:['Café y conversación']},
+    {prompt:'Descifra: 🕺 + 💃 + 🎶',options:['Bailar juntos','Ir al dentista','Hacer compras','Pintar una pared'],answers:['Bailar juntos']},
+    {prompt:'Descifra: 🌅 + 🏖️ + 💕',options:['Atardecer en la playa','Noche de videojuegos','Día de oficina','Visita al banco'],answers:['Atardecer en la playa']},
+    {prompt:'Descifra: 💌 + 📱 + 😍',options:['Mensaje romántico','Actualización del teléfono','Falla de internet','Cita médica'],answers:['Mensaje romántico']},
+    {prompt:'Descifra: 🍕 + 🎮 + 😂',options:['Pizza y videojuegos','Maratón de correr','Clase de piano','Reunión formal'],answers:['Pizza y videojuegos']},
+    {prompt:'Descifra: 🌧️ + 🛋️ + 🎥',options:['Película en casa','Escalar una montaña','Ir a nadar','Jugar vóley'],answers:['Película en casa']}
+  ],
+  sequence:[
+    {prompt:'¿Qué sigue? 💗 💜 💗 💜 ...',options:['💗','💜','💛','💚'],answers:['💗']},
+    {prompt:'¿Qué sigue? 🌹 🌹 💌 🌹 🌹 ...',options:['💌','🌹','💗','⭐'],answers:['💌']},
+    {prompt:'¿Qué sigue? 🔥 💙 🔥 💙 ...',options:['🔥','💙','🌸','🎈'],answers:['🔥']},
+    {prompt:'¿Qué sigue? 💕 💕 💕 ⭐ 💕 💕 💕 ...',options:['⭐','💕','🌹','💌'],answers:['⭐']},
+    {prompt:'¿Qué sigue? 💛 💚 💙 💛 💚 ...',options:['💙','💛','💚','🧡'],answers:['💙']},
+    {prompt:'¿Qué sigue? 🌸 💌 🌸 💌 ...',options:['🌸','💌','🌹','💞'],answers:['🌸']},
+    {prompt:'¿Qué sigue? 🎵 🎵 🎤 🎵 🎵 ...',options:['🎤','🎵','📻','💕'],answers:['🎤']},
+    {prompt:'¿Qué sigue? ⭐ 🌙 ⭐ 🌙 ...',options:['⭐','🌙','☀️','🌈'],answers:['⭐']}
   ],
   riddle:[
     {prompt:'Tengo agujas y no sé coser, doy las horas sin hablar. ¿Qué soy?',answers:['reloj','un reloj'],reveal:'Reloj'},
@@ -176,6 +211,20 @@ function makeQuestions(type){
       return {prompt:`¿Cuánto es ${a} ${op} ${b}?`,options:[],answers:[String(ans)],reveal:String(ans)};
     });
   }
+  if(type==='memory'){
+    const symbols=['💗','💜','🌹','🍫','💌','🌸','🔥','🌙','💎','⭐','🎀','🍓'];
+    return Array.from({length:TOTAL_QUIZ_ROUNDS},()=>{
+      const chosen=shuffle(symbols).slice(0,5);
+      const idx=crypto.randomInt(5);
+      return {preview:chosen.join('   '),prompt:`¿Cuál era el emoji de la posición ${idx+1}?`,options:shuffle(chosen),answers:[chosen[idx]],reveal:chosen[idx]};
+    });
+  }
+  if(type==='luck'){
+    return Array.from({length:TOTAL_QUIZ_ROUNDS},()=>{
+      const value=crypto.randomInt(1,6);
+      return {prompt:'🍀 Gabriela escondió un número del 1 al 5. ¿Cuál eligió la suerte?',options:['1','2','3','4','5'],answers:[String(value)],reveal:String(value)};
+    });
+  }
   if(type==='scramble'){
     return shuffle(quizPools.scramble).slice(0,TOTAL_QUIZ_ROUNDS).map(({word})=>{
       let mixed=word;
@@ -196,11 +245,11 @@ function sendTyping(force=false){
 function publicContest() {
   if(!contest) return null;
   const isQuiz=quizTypes.has(contest.type);
-  const showQuestion=isQuiz && ['active','between','finished'].includes(contest.phase) && contest.question;
+  const showQuestion=isQuiz && ['preview','active','between','finished'].includes(contest.phase) && contest.question;
   return {id:contest.id,type:contest.type,title:typeNames[contest.type],phase:contest.phase,round:contest.round,
-    totalRounds:isQuiz?TOTAL_QUIZ_ROUNDS:null,deadline:contest.deadline,winner:contest.winner||null,
+    totalRounds:isQuiz?TOTAL_QUIZ_ROUNDS:null,deadline:contest.deadline,winner:contest.winner||null,prizeGranted:!!contest.prizeGranted,
     note:contest.note||'',minPlayers:MIN_PLAYERS,
-    question:showQuestion?{prompt:contest.question.prompt,options:contest.question.options||[],reveal:contest.phase==='active'?null:contest.question.reveal}:null,
+    question:showQuestion?{prompt:contest.phase==='preview'?'👀 Memoriza estos emojis: '+contest.question.preview:contest.question.prompt,options:contest.phase==='preview'?[]:contest.question.options||[],reveal:['active','preview'].includes(contest.phase)?null:contest.question.reveal}:null,
     responded:isQuiz?[...contest.players.values()].filter(p=>p.answeredRound===contest.round).length:0,
     participants:[...contest.players.values()].map(p=>({nick:p.nick,score:p.score,alive:p.alive,order:p.order,answered:isQuiz&&p.answeredRound===contest.round})).sort((a,b)=>(b.alive-a.alive)||(b.score-a.score)||(a.order-b.order))};
 }
@@ -211,8 +260,9 @@ function finishContest() {
   if(!contest || contest.phase==='finished') return;
   const isQuiz=quizTypes.has(contest.type);
   const alive=alivePlayers().sort((a,b)=>b.score-a.score || (isQuiz?a.totalResponseMs-b.totalResponseMs:a.firstTap-b.firstTap) || a.order-b.order);
-  contest.winner=alive.find(p=>p.score>0)?.nick||null; contest.phase='finished';contest.deadline=0;
-  contest.note=contest.winner ? `🎉 Ganó ${contest.winner}${isQuiz?` con ${alive[0].score}/${TOTAL_QUIZ_ROUNDS} aciertos`:''}` : 'No hubo ganador';
+  const champion=alive.find(p=>p.score>0)||null;
+  contest.winner=champion?.nick||null;contest.winnerId=champion?.sessionId||null;contest.phase='finished';contest.deadline=0;
+  contest.note=contest.winner ? `💘 ${contest.winner} es finalista de la conquista${isQuiz?` (${alive[0].score}/${TOTAL_QUIZ_ROUNDS} aciertos)`:''}. Gabriela decide si le da acceso al grupo privado.` : 'No hubo ganador esta vez. ¡Habrá revancha!';
   clearContestTimers(); sendContest();
 }
 function completeQuizRound(id,round){
@@ -239,17 +289,30 @@ function beginRound() {
     const currentRound=contest.round;
     const quiz=quizTypes.has(contest.type);
     const time=quiz?QUIZ_ROUND_MS:(contest.type==='first'?15000:10000);
-    contest.deadline=Date.now()+time;
-    contest.startedAt=Date.now();
-    if(quiz){
-      contest.question=contest.quizQuestions[contest.round-1];
-      contest.note=`Pregunta ${contest.round} de ${TOTAL_QUIZ_ROUNDS} · una respuesta por persona`;
-    } else {
-      contest.note=contest.type==='first'?'¡Toca primero!': '¡Toca tantas veces como puedas!';
-      for(const p of contest.players.values()) if(p.alive){p.score=0;p.firstTap=Number.MAX_SAFE_INTEGER;p.lastTap=0;}
-    }
-    sendContest();
-    later(()=>{if(!contest||contest.id!==id||contest.phase!=='active')return;
+    const currentQuestion=quiz?contest.quizQuestions[contest.round-1]:null;
+    if(quiz)contest.question=currentQuestion;
+    if(contest.type==='memory'){
+      contest.phase='preview';contest.deadline=Date.now()+MEMORY_PREVIEW_MS;
+      contest.note='👀 Memoriza el orden. Todos ven la misma secuencia.';
+      sendContest();
+      later(()=>{
+        if(!contest||contest.id!==id||contest.phase!=='preview')return;
+        activateRound();
+      },MEMORY_PREVIEW_MS);
+    } else activateRound();
+    function activateRound(){
+      if(!contest||contest.id!==id)return;
+      contest.phase='active';
+      contest.deadline=Date.now()+time;
+      contest.startedAt=Date.now();
+      if(quiz){
+        contest.note=`Pregunta ${contest.round} de ${TOTAL_QUIZ_ROUNDS} · una respuesta por persona`;
+      } else {
+        contest.note=contest.type==='first'?'¡Toca primero!': '¡Toca tantas veces como puedas!';
+        for(const p of contest.players.values()) if(p.alive){p.score=0;p.firstTap=Number.MAX_SAFE_INTEGER;p.lastTap=0;}
+      }
+      sendContest();
+      later(()=>{if(!contest||contest.id!==id||contest.phase!=='active')return;
       if(quiz){completeQuizRound(id,currentRound);return;}
       if(contest.type!=='knockout'){finishContest();return;}
       const ranked=alivePlayers().sort((a,b)=>b.score-a.score || a.firstTap-b.firstTap || a.order-b.order);
@@ -261,7 +324,8 @@ function beginRound() {
       contest.note=removed.length?`Eliminados: ${removed.join(', ')}`:'¡Seguimos!';
       sendContest();
       later(()=>{if(!contest||contest.id!==id)return;contest.round+=1;beginRound();},3500);
-    },time);
+      },time);
+    }
   },3500);
 }
 function removeDisconnectedPlayer(s) {
@@ -306,12 +370,23 @@ function challengeAdmin(s,route,body) {
     if(!typeNames[body.type])return {status:400,error:'Elige un reto válido.'};
     if(registeredCount()<MIN_PLAYERS)return {status:409,error:`Se necesitan ${MIN_PLAYERS} nicks conectados como mínimo.`};
     clearContestTimers();
-    contest={id:crypto.randomUUID(),type:body.type,phase:'signup',round:1,deadline:0,winner:null,note:'Inscripciones abiertas. ¡Pulsa Participar!',players:new Map(),question:null,quizQuestions:quizTypes.has(body.type)?makeQuestions(body.type):[]};
+    contest={id:crypto.randomUUID(),type:body.type,phase:'signup',round:1,deadline:0,winner:null,winnerId:null,prizeGranted:false,note:'Inscripciones abiertas. ¡Pulsa Participar!',players:new Map(),question:null,quizQuestions:quizTypes.has(body.type)?makeQuestions(body.type):[]};
     sendContest();return {status:200,ok:true};
   }
   if(!contest)return {status:409,error:'Aún no se ha creado un reto.'};
   if(route==='cancel'){
     clearContestTimers();contest=null;sendContest();return {status:200,ok:true};
+  }
+  if(route==='prize'){
+    if(contest.phase!=='finished' || !contest.winner || !contest.winnerId)return {status:409,error:'Todavía no hay un finalista ganador.'};
+    if(contest.prizeGranted)return {status:409,error:'Ya se habilitó al ganador de este concurso.'};
+    const winner=sessions.get(contest.winnerId);
+    if(!online(winner)||winner.nick!==contest.winner)return {status:409,error:'El ganador ya no está conectado con su nick. Puedes seleccionarlo manualmente cuando regrese.'};
+    if(!validLink)return {status:409,error:'Configura TELEGRAM_LINK en Railway primero.'};
+    globalLinkEnabled=true;accessMode='exclusive';permissions.set(winner.id,true);contest.prizeGranted=true;
+    contest.note=`💌 Gabriela habilitó el acceso privado a ${winner.nick}. ¡Enhorabuena!`;
+    sendLinkStates();sendRoster();sendContest();everyone('winner-prize',{nick:winner.nick});
+    return {status:200,ok:true,recipient:winner.nick};
   }
   if(route==='start'){
     if(contest.phase!=='signup')return {status:409,error:'Este reto ya empezó.'};
@@ -348,6 +423,14 @@ function handlePost(req,res,s,route,body){
     s.typingUntil=0;sendTyping();
     const m={id:crypto.randomUUID(),nick:s.nick,text,at:new Date().toISOString()};
     messages.push(m);if(messages.length>100)messages.shift();everyone('message-new',m);return msg(res,201,{ok:true});
+  }
+  if(route==='/api/reaction'){
+    if(!online(s))return error(res,403,'Conéctate a la página para reaccionar.');
+    const emoji=String(body.emoji||'');
+    if(!['💗','🔥','😍','👏'].includes(emoji))return error(res,400,'Reacción inválida.');
+    if(Date.now()-s.lastReaction<1400)return error(res,429,'Espera un momento entre reacciones.');
+    s.lastReaction=Date.now();everyone('live-reaction',{emoji,nick:s.nick||'Visitante'});
+    return msg(res,200,{ok:true});
   }
   if(route==='/api/epic'){
     if(!isAdmin(s))return error(res,403,'Solo Gabriela puede activar la animación.');
@@ -392,7 +475,7 @@ function handlePost(req,res,s,route,body){
     if(!online(s)||!s.nick)return error(res,403,'Necesitas registrar un nick para participar.');
     if(!contest||contest.phase!=='signup')return error(res,409,'Las inscripciones no están abiertas.');
     if(!contest.players.has(s.id)&&contest.players.size>=MAX_PLAYERS)return error(res,409,'El reto llegó al máximo de participantes.');
-    if(!contest.players.has(s.id))contest.players.set(s.id,{nick:s.nick,score:0,alive:true,order:contest.players.size+1,firstTap:Number.MAX_SAFE_INTEGER,lastTap:0,answeredRound:0,totalResponseMs:0});
+    if(!contest.players.has(s.id))contest.players.set(s.id,{sessionId:s.id,nick:s.nick,score:0,alive:true,order:contest.players.size+1,firstTap:Number.MAX_SAFE_INTEGER,lastTap:0,answeredRound:0,totalResponseMs:0});
     sendContest();return msg(res,200,{ok:true});
   }
   if(route==='/api/challenge/action'){const r=challengeAction(s,body);return msg(res,r.status,r);}
@@ -450,6 +533,6 @@ const server=http.createServer((req,res)=>{
   }
   error(res,404,'No encontrado.');
 });
-server.listen(PORT,'0.0.0.0',()=>console.log(`Únete BB v6.5 · puerto ${PORT} · mode ${accessMode}`));
+server.listen(PORT,'0.0.0.0',()=>console.log(`Únete BB v6.6 · puerto ${PORT} · mode ${accessMode}`));
 setInterval(()=>sendTyping(),950).unref();
 setInterval(()=>{const expire=Date.now()-86400000;for(const [id,s] of sessions){if(!online(s)&&!s.nick&&s.lastSeen<expire){sessions.delete(id);permissions.delete(id);}}},600000).unref();

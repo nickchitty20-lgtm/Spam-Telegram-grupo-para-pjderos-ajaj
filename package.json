@@ -1,8 +1,8 @@
 {
   "name": "unete-bb-telegram",
-  "version": "6.5.0",
+  "version": "6.6.0",
   "private": true,
-  "description": "Landing Telegram, chat y retos en vivo con permisos por nick",
+  "description": "Conquista de Gabriela: concursos en vivo, instrucciones, chat y permisos por nick",
   "scripts": {
     "start": "node server.js",
     "test": "node --check server.js && node --check public/app.js"
