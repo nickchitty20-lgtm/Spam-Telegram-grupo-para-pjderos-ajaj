@@ -1,8 +1,13 @@
 {
   "name": "unete-bb-telegram",
-  "version": "6.2.0",
+  "version": "6.3.0",
   "private": true,
   "description": "Landing Telegram, chat y retos en vivo con permisos por nick",
-  "scripts": {"start":"node server.js", "test":"node --check server.js && node --check public/app.js"},
-  "engines": {"node": ">=18"}
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --check server.js && node --check public/app.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
 }

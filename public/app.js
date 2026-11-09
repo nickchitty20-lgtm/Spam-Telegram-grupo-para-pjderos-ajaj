@@ -9,6 +9,7 @@
   let online = false;
   let registered = 0;
   let roster = [];
+  let selectedNick = ''; // se elige por el nick visible, nunca por el índice de la lista
   let shout = 'entra bb 💕';
   let buttonText = 'Únete, bb 💗';
   let lastEpicTimeout = null;
@@ -65,14 +66,35 @@
     } finally {$('nickButton').disabled=false;}
   }
   function showRoster(data){
-    roster=data.users||[];
-    registered=data.registered||0;
+    // El panel usa exclusivamente los nicks reales registrados en el servidor.
+    // No mostramos IDs de sesiones ni números de posición como si fueran nombres.
+    roster=Array.isArray(data.users) ? data.users.filter(u=>u && typeof u.nick==='string' && u.nick.trim()) : [];
+    registered=Number.isFinite(data.registered) ? data.registered : roster.length;
     $('registeredLabel').textContent=`Nicks conectados: ${registered}/7 mínimos`;
-    const select=$('targetNick'), old=select.value;
-    select.replaceChildren(el('option','', 'Selecciona un nick...'));
-    select.firstElementChild.value='';
-    for(const u of roster){const opt=el('option','',`${u.nick} · ${u.access?'habilitado':'bloqueado'}`);opt.value=u.nick;select.appendChild(opt);}
-    if(roster.some(u=>u.nick===old))select.value=old;
+    if(!roster.some(u=>u.nick===selectedNick)) selectedNick='';
+    const list=$('nickList');list.replaceChildren();
+    if(!roster.length) {
+      list.appendChild(el('div','nick-empty','Ningún usuario ha registrado su nick todavía.'));
+    } else {
+      for(const user of roster){
+        const selected=user.nick===selectedNick;
+        const item=el('button','nick-item'+(selected?' selected':''));
+        item.type='button';item.setAttribute('aria-pressed',String(selected));
+        item.setAttribute('aria-label','Seleccionar nick '+user.nick);
+        const person=el('span','nick-name');
+        const symbol=el('span','nick-avatar','👤');
+        const name=el('strong','',user.nick);
+        person.append(symbol,name);
+        const state=el('span','nick-access '+(user.access?'yes':'no'),user.access?'🔓 Permitido':'🔒 Bloqueado');
+        item.append(person,state);
+        item.addEventListener('click',()=>{ selectedNick=user.nick;showRoster({users:roster,registered}); });
+        list.appendChild(item);
+      }
+    }
+    const hasSelection=!!selectedNick;
+    $('selectedNickLabel').textContent=hasSelection?'Seleccionado: '+selectedNick:'Toca un nick para seleccionarlo';
+    $('allowNick').disabled=!hasSelection;
+    $('denyNick').disabled=!hasSelection;
     document.querySelectorAll('[data-challenge]').forEach(b=>b.disabled=registered<7);
   }
   function appendMessage(m){
@@ -189,7 +211,7 @@
     await action('/api/link/exclusive',{},'🎯 Ahora solo entran los nicks autorizados por Gabriela.');
   });
   async function permission(enabled){
-    const target=$('targetNick').value;if(!target){tell('Primero elige un nick conectado.');return;}
+    const target=selectedNick;if(!target){tell('Primero toca el nick de la lista.');return;}
     await action('/api/link/person',{nick:target,enabled},enabled?`🔓 Acceso habilitado para ${target} en modo exclusivo`:`🔒 Acceso deshabilitado para ${target}`);
   }
   $('allowNick').addEventListener('click',()=>permission(true));

@@ -1,4 +1,4 @@
-# Únete BB v6.2 — Nick obligatorio + Acceso Gabriela corregido
+# Únete BB v6.3 — Nick obligatorio + Acceso Gabriela corregido
 
 Proyecto Node.js sin dependencias externas. Solo una instancia/réplica de Railway. El chat, nick, contadores, permisos y retos viven en memoria: se reinician cuando Railway reinicia o redespliega el servicio.
 
@@ -47,7 +47,7 @@ Abre http://localhost:3000
 
 ## Corrección del problema del botón deshabilitado
 
-En v6.2 se corrigen los permisos de Gabriela: ya no queda bloqueada en modo exclusivo. Además, el botón y la ruta `/join` exigen tener un nick activo, incluso si Gabriela habilita el acceso general. Los botones son explícitos y el servidor sincroniza al instante los estados mediante SSE. Si se quiere permitir únicamente a un nick, seleccionar ese nick y pulsar **Habilitar a este nick**: esta acción enciende el enlace automáticamente y cambia a modo exclusivo.
+En v6.3 se corrigen los permisos de Gabriela: ya no queda bloqueada en modo exclusivo. Además, el botón y la ruta `/join` exigen tener un nick activo, incluso si Gabriela habilita el acceso general. Los botones son explícitos y el servidor sincroniza al instante los estados mediante SSE. Si se quiere permitir únicamente a un nick, seleccionar ese nick y pulsar **Habilitar a este nick**: esta acción enciende el enlace automáticamente y cambia a modo exclusivo.
 
 Si sigue mostrando `⚠️ TELEGRAM_LINK no está configurado`, colocar en Railway una URL válida que empiece por `https://t.me/`. Hay que desplegar la nueva versión en una sola réplica.
 
@@ -57,4 +57,13 @@ Si sigue mostrando `⚠️ TELEGRAM_LINK no está configurado`, colocar en Railw
 2. Entra al chat con un nick (si eliges `Gabriela`, usa el PIN si está configurado).
 3. En el panel de Gabriela pulsa «Habilitar para TODOS los nicks», o usa «Solo nicks autorizados» para limitarlo. Gabriela **no requiere permiso individual**.
 4. Si tenías abierta la web antes de desplegar, recarga la página para cargar el JavaScript actualizado.
-5. Comprueba que Railway está usando esta versión v6.2 y que solo hay una réplica.
+5. Comprueba que Railway está usando esta versión v6.3 y que solo hay una réplica.
+
+
+## Cambios en v6.3 — nicks visibles para autorizar
+
+En el panel de Gabriela ya no se utiliza una lista desplegable: aparece una **lista de tarjetas** con los nicks escritos por cada visitante que esté conectado y registrado. Pulsa un nombre para seleccionarlo; se resaltará y aparecerá debajo «Seleccionado: Nombre». Luego pulsa «Habilitar a este nick» o «Deshabilitar». Se mantienen los permisos y controles de la v6.2.
+
+La lista se actualiza en vivo. Si no aparece algún nick, esa persona debe conectarse y registrar un nick (no basta con entrar sin elegir nombre). Si alguien decidió registrar un nick de solo números, se mostrará ese nick tal como lo registró.
+
+Importante: reemplaza **todos** los archivos del ZIP, incluidos `public/index.html`, `public/app.js` y `public/style.css`. Después de desplegar, actualiza la página con Ctrl+F5 para evitar archivos viejos en caché.

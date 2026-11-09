@@ -312,5 +312,5 @@ const server=http.createServer((req,res)=>{
   }
   error(res,404,'No encontrado.');
 });
-server.listen(PORT,'0.0.0.0',()=>console.log(`Únete BB v6.2 · puerto ${PORT} · mode ${accessMode}`));
+server.listen(PORT,'0.0.0.0',()=>console.log(`Únete BB v6.3 · puerto ${PORT} · mode ${accessMode}`));
 setInterval(()=>{const expire=Date.now()-86400000;for(const [id,s] of sessions){if(!online(s)&&!s.nick&&s.lastSeen<expire){sessions.delete(id);permissions.delete(id);}}},600000).unref();

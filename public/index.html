@@ -6,8 +6,8 @@
   <meta name="theme-color" content="#170c20">
   <meta name="description" content="Únete a nuestra comunidad en Telegram y participa en retos en vivo">
   <title>Únete, bb 💗</title>
-  <link rel="stylesheet" href="/style.css">
-  <script src="/app.js" defer></script>
+  <link rel="stylesheet" href="/style.css?v=6.3.0">
+  <script src="/app.js?v=6.3.0" defer></script>
 </head>
 <body>
   <div class="ambient" aria-hidden="true"><div class="orb orb-a"></div><div class="orb orb-b"></div><div class="orb orb-c"></div><div class="stars"></div></div>
@@ -60,8 +60,12 @@
         <div class="admin-section">
           <strong>🎯 Elegir quién puede entrar</strong>
           <p>Selecciona un nick conectado. En modo exclusivo, Gabriela conserva siempre su acceso y puede autorizar a otros visitantes.</p>
-          <select id="targetNick" aria-label="Elegir nick conectado"><option value="">Elige un nick...</option></select>
-          <div class="two-buttons"><button class="btn allow" id="allowNick">🔓 Habilitar a este nick</button><button class="btn deny" id="denyNick">🔒 Deshabilitar</button></div>
+          <p class="nick-help">👥 Personas con nick registrado que están en línea:</p>
+          <div id="nickList" class="nick-list" role="group" aria-label="Seleccionar nick conectado">
+            <div class="nick-empty">Esperando nicks conectados…</div>
+          </div>
+          <p id="selectedNickLabel" class="selected-nick" aria-live="polite">Ningún nick seleccionado</p>
+          <div class="two-buttons"><button class="btn allow" id="allowNick" disabled>🔓 Habilitar a este nick</button><button class="btn deny" id="denyNick" disabled>🔒 Deshabilitar</button></div>
           <small id="linkModeLabel"></small>
         </div>
         <div class="admin-section">
