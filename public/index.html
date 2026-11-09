@@ -6,8 +6,9 @@
   <meta name="theme-color" content="#170c20">
   <meta name="description" content="Únete a nuestra comunidad en Telegram y participa en retos en vivo">
   <title>La conquista de Gabriela 💘 | Únete BB</title>
-  <link rel="stylesheet" href="/style.css?v=6.6.0">
-  <script src="/app.js?v=6.6.0" defer></script>
+  <link rel="stylesheet" href="/style.css?v=7.0.0">
+  <script src="/app.js?v=7.0.0" defer></script>
+  <script src="/extras-client.js?v=7.0.0" defer></script>
 </head>
 <body>
   <div class="ambient" aria-hidden="true"><div class="orb orb-a"></div><div class="orb orb-b"></div><div class="orb orb-c"></div><div class="stars"></div></div>
@@ -31,6 +32,16 @@
     <button type="button" id="gotItHowto" class="btn drawer-done">¡Entendido, voy a conquistarla! 💗</button>
   </aside>
   <div class="live-toast" id="liveToast" hidden role="status"></div>
+  <div id="announcementOverlay" class="announcement-overlay" hidden role="dialog" aria-modal="true" aria-label="Anuncio de Gabriela">
+    <div class="announcement-box"><div class="superstar">📣</div><div class="eyebrow">ATENCIÓN, COMUNIDAD</div><h2>Gabriela anuncia 💖</h2><p id="announcementText"></p><div class="timebar"><div id="announcementProgress"></div></div><button class="btn ghost" id="closeAnnouncement">Continuar 💗</button></div>
+  </div>
+  <div id="spotlightOverlay" class="media-overlay" hidden role="dialog" aria-modal="true" aria-label="Contenido temporal de Gabriela">
+    <div class="media-box"><div class="media-box-top"><strong>💌 Gabriela te envió algo solo a ti</strong><span id="mediaCountdown">10s</span></div>
+      <p class="media-note">Solo tu sesión puede abrir este archivo; se eliminará cuando termine el tiempo. Las capturas y grabaciones externas no pueden bloquearse por completo.</p>
+      <img id="spotlightImg" alt="Imagen privada temporal" hidden draggable="false"><video id="spotlightVideo" playsinline controls controlsList="nodownload noplaybackrate" disablePictureInPicture hidden></video>
+      <button class="btn ghost" id="closeSpotlight">Cerrar vista privada ✕</button>
+    </div>
+  </div>
   <main class="page">
     <section class="hero card" id="hero">
       <div class="hero-top"><span class="pill">💌 Invitación especial</span><span class="live-dot">EN VIVO</span></div>
@@ -77,9 +88,15 @@
       <div class="small-foot">Las partidas y los resultados son públicos. Gabriela elige si habilita el enlace al ganador: no es automático ni está garantizado.</div>
     </section>
 
+    <section class="card poll-section" aria-label="Votaciones en directo">
+      <div class="section-head"><div><span class="overline">DECIDE LA COMUNIDAD</span><h2>🗳️ Votación en vivo</h2></div><span id="pollBadge" class="mini-pill">En espera</span></div>
+      <p class="hint" id="pollHint">Gabriela puede lanzar una encuesta que todos verán y votarán en directo.</p>
+      <div id="pollPanel" hidden><h3 id="pollQuestion"></h3><p id="pollTime" class="hint"></p><div id="pollOptions" class="poll-options"></div><div id="pollFeedback" class="hint"></div></div>
+    </section>
     <section class="card chat" aria-label="Chat público">
       <div class="section-head"><div><span class="overline">CONVERSACIÓN</span><h2 id="chatTitle">💬 Chat en vivo</h2></div><div class="online" id="presence" title="Navegadores conectados"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg><b id="onlineNum">—</b><span>en línea</span></div></div>
       <div class="notice"><b>📌 Mensaje destacado</b><p id="chatWelcome">¡Únete al Telegram, bb!</p><a href="/join" id="noticeJoin" target="_blank" rel="noopener noreferrer" hidden>Entrar al grupo ↗</a></div>
+      <div class="pinned-banner" id="pinnedBanner" hidden><strong>📌 Mensaje fijado de Gabriela</strong><p id="pinnedText"></p></div>
       <div class="admin" id="adminPanel" hidden>
         <div class="admin-heading">👑 Panel de Gabriela <span>PRIVADO</span></div>
         <button class="btn magic" id="epicButton">💖 Lanzar entrada épica para todos</button>
@@ -104,6 +121,57 @@
           <small id="linkModeLabel"></small>
         </div>
         <div class="admin-section">
+          <strong>✈️ Destino de Telegram</strong>
+          <p>Elige si el botón abre tu grupo o tu usuario de Telegram. También puedes cambiar ambas URL sin redeplegar.</p>
+          <div class="link-targets"><button class="btn game" id="switchGroup">👥 Usar grupo</button><button class="btn game" id="switchUser">💬 Usar mi usuario</button></div>
+          <label class="compact-label" for="telegramTargetType">Editar enlace de:</label>
+          <select id="telegramTargetType"><option value="group">Mi grupo / canal</option><option value="user">Mi usuario personal</option></select>
+          <div class="field-row"><input id="telegramTargetUrl" type="url" placeholder="https://t.me/tuusuario" aria-label="URL de Telegram"><button class="btn sm" type="button" id="saveTelegramTarget">Guardar ✈</button></div>
+          <small id="activeTargetLabel">Destino actual: grupo</small>
+        </div>
+        <div class="admin-section">
+          <strong>📣 Anunciar algo a TODOS</strong>
+          <p>Aparece en pantalla de todos los conectados durante el tiempo que elijas.</p>
+          <textarea id="announcementInput" maxlength="360" rows="3" placeholder="Ej. ¡Atención, finalistas! 💘"></textarea>
+          <div class="field-row"><label class="compact-label" for="announceDuration">Segundos:</label><input id="announceDuration" type="number" min="5" max="90" value="10" style="max-width:100px"><label class="check-inline"><input id="announcePin" type="checkbox"> Fijar en chat</label></div>
+          <button type="button" class="btn magic" id="sendAnnouncement">📣 Anunciar en pantalla</button>
+          <div class="field-row"><input id="pinnedInput" maxlength="260" placeholder="Mensaje fijado (vacío para quitar)"><button class="btn sm" type="button" id="savePinned">📌 Fijar</button></div>
+        </div>
+        <div class="admin-section">
+          <strong>🗳️ Crear votación pública</strong>
+          <input id="pollCreateQuestion" maxlength="160" placeholder="¿Quién merece pasar a la final?">
+          <textarea id="pollCreateOptions" rows="4" placeholder="Opción A
+Opción B
+Opción C
+(Una opción por línea, entre 2 y 5)"></textarea>
+          <select id="pollDuration"><option value="30">30 segundos</option><option value="60" selected>60 segundos</option><option value="120">2 minutos</option><option value="300">5 minutos</option></select>
+          <div class="two-buttons"><button class="btn allow" id="createPoll">🗳️ Abrir votación</button><button class="btn deny" id="closePoll">Cerrar votación</button></div>
+        </div>
+        <div class="admin-section">
+          <strong>📷 Mostrar foto/video a un solo nick</strong>
+          <p>Selecciona un nick de la lista superior, elige un archivo y una duración (5–120 s). Nadie más verá el contenido.</p>
+          <input id="spotlightFile" type="file" accept="image/png,image/jpeg,image/gif,image/webp,video/mp4,video/webm" aria-label="Archivo privado">
+          <div class="field-row"><label class="compact-label" for="spotlightSeconds">Tiempo (s):</label><input id="spotlightSeconds" type="number" min="5" max="120" value="10" style="max-width:95px"><button type="button" class="btn sm" id="spotlight30">30s</button><button type="button" class="btn sm" id="spotlight10">10s</button></div>
+          <button type="button" class="btn magic" id="sendSpotlight">💌 Mostrar SOLO al nick seleccionado</button>
+        </div>
+        <div class="admin-section">
+          <strong>💬 Buzón privado con Gabriela</strong>
+          <p>Abre/cierra los mensajes privados y el envío de fotos/videos. Nadie más puede leer el buzón.</p>
+          <label class="toggle-row"><input id="dmToggle" type="checkbox"> Permitir que me escriban en privado</label>
+          <label class="toggle-row"><input id="dmMediaToggle" type="checkbox"> Permitir fotos y videos privados</label>
+          <button class="btn allow" type="button" id="saveDmSettings">Guardar permisos del buzón</button>
+          <div id="adminPrivateMessages" class="private-feed" aria-label="Mensajes privados recibidos"></div>
+          <p class="hint">Para responder, selecciona el nick en la lista superior.</p>
+          <div class="field-row"><input id="adminPrivateInput" maxlength="700" placeholder="Responder al nick seleccionado..."><button class="btn sm" id="adminPrivateSend" type="button">Responder</button></div>
+          <div class="field-row"><input id="adminReplyFile" type="file" accept="image/png,image/jpeg,image/gif,image/webp,video/mp4,video/webm" aria-label="Responder con foto o video"><button class="btn sm" id="adminReplyMedia" type="button">Enviar archivo</button></div>
+        </div>
+        <div class="admin-section">
+          <strong>🛡️ Moderación y extras</strong>
+          <p>Silencia al nick seleccionado si hace spam, o haz un sorteo público entre quienes están conectados.</p>
+          <div class="two-buttons"><button class="btn deny" id="muteNick">🔇 Silenciar 5 min</button><button class="btn game" id="unmuteNick">🔊 Quitar silencio</button></div>
+          <button class="btn magic" id="raffleNow">🎲 Sorteo sorpresa entre nicks</button>
+        </div>
+        <div class="admin-section">
           <strong>🏆 Organizar concurso</strong>
           <p id="registeredLabel">Registrados conectados: 0/3</p>
           <div class="games"><button class="btn game" data-challenge="first">⚡ Primer clic</button><button class="btn game" data-challenge="taps">🔥 Toques 10s</button><button class="btn game" data-challenge="knockout">🏆 Eliminatoria</button><button class="btn game" data-challenge="trivia">🧠 Preguntas</button><button class="btn game" data-challenge="math">🔢 Matemáticas</button><button class="btn game" data-challenge="scramble">🔤 Palabra revuelta</button><button class="btn game" data-challenge="riddle">🕵️ Adivinanzas</button><button class="btn game" data-challenge="romance">💘 Código del ligue</button><button class="btn game" data-challenge="emoji">💌 Descifra emojis</button><button class="btn game" data-challenge="sequence">🧩 Secuencias</button><button class="btn game" data-challenge="memory">👀 Memoria de emojis</button><button class="btn game" data-challenge="luck">🍀 Suerte del amor</button></div>
@@ -126,6 +194,14 @@
         </form>
         <div class="feedback" id="feedback" role="status"></div>
       </div>
+    </section>
+    <section class="card private-room" id="privateRoom" hidden aria-label="Privado con Gabriela">
+      <div class="section-head"><div><span class="overline">SOLO TÚ Y GABRIELA</span><h2>💌 Escríbele en privado</h2></div><span class="mini-pill" id="privateRoomBadge">Abierto</span></div>
+      <p class="hint">Esta conversación no aparece en el chat público. Gabriela decide cuándo recibir mensajes y archivos.</p>
+      <div id="myPrivateMessages" class="private-feed" aria-live="polite"></div>
+      <form id="myPrivateForm"><div class="field-row"><input id="myPrivateInput" maxlength="700" placeholder="Tu mensaje privado para Gabriela..." required><button class="btn sm" type="submit">Enviar 💗</button></div></form>
+      <div id="privateMediaRow" class="field-row" hidden><input id="myPrivateFile" type="file" accept="image/png,image/jpeg,image/gif,image/webp,video/mp4,video/webm" aria-label="Foto o video privado"><button type="button" class="btn sm" id="myPrivateMediaSend">Enviar archivo</button></div>
+      <p id="privateFeedback" class="hint" role="status"></p>
     </section>
     <footer>Una competencia para reír, conocer gente y pasarla bien 💗 · La invitación al grupo queda a criterio de Gabriela.</footer>
   </main>

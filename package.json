@@ -1,11 +1,11 @@
 {
   "name": "unete-bb-telegram",
-  "version": "6.6.0",
+  "version": "7.0.0",
   "private": true,
-  "description": "Conquista de Gabriela: concursos en vivo, instrucciones, chat y permisos por nick",
+  "description": "La conquista de Gabriela v7: encuestas, anuncios, medios privados efímeros, mensajes privados, control de Telegram y concursos en vivo",
   "scripts": {
     "start": "node server.js",
-    "test": "node --check server.js && node --check public/app.js"
+    "test": "node --check server.js && node --check extras.js && node --check public/app.js && node --check public/extras-client.js"
   },
   "engines": {
     "node": ">=18"

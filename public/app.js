@@ -74,6 +74,7 @@
     $('enableAll').disabled=!!link.globalEnabled&&link.mode==='public';
     $('disableAll').disabled=!link.globalEnabled;
     $('exclusiveMode').disabled=!!link.globalEnabled&&link.mode==='exclusive';
+    document.dispatchEvent(new CustomEvent('bb:link',{detail:link}));
   }
   function showIdentity(){
     const valid=nick.length>=2;
@@ -81,6 +82,7 @@
     $('messageForm').hidden=!valid;
     $('myNick').textContent=nick;
     $('adminPanel').hidden=!(valid&&admin);
+    document.dispatchEvent(new Event('bb:identity'));
     if(!valid)$('nickInput').value=$('nickInput').value||nick;
     drawChallenge();
   }
@@ -129,6 +131,7 @@
     }
     const hasSelection=!!selectedNick;
     $('selectedNickLabel').textContent=hasSelection?'Seleccionado: '+selectedNick:'Toca un nick para seleccionarlo';
+    document.dispatchEvent(new Event('bb:selection'));
     $('allowNick').disabled=!hasSelection;
     $('denyNick').disabled=!hasSelection;
     document.querySelectorAll('[data-challenge]').forEach(b=>b.disabled=registered<minPlayers);
@@ -309,6 +312,9 @@
     stream.addEventListener('typing',e=>{try{renderTyping(JSON.parse(e.data).nicks);}catch{}});
     stream.addEventListener('live-reaction',e=>{try{showReaction(JSON.parse(e.data));}catch{}});
     stream.addEventListener('winner-prize',e=>{try{popToast('💌 Gabriela invitó a '+JSON.parse(e.data).nick+' al grupo privado');}catch{}});
+    for(const eventName of ['poll-state','private-settings','private-history','private-message','spotlight','media-expired','announcement','pinned','raffle-result','mute-state']){
+      stream.addEventListener(eventName,e=>{try{const data=JSON.parse(e.data);if(window.bbExtras?.onEvent)window.bbExtras.onEvent(eventName,data);else(window.bbExtraQueue??=[]).push([eventName,data]);}catch{}});
+    }
   }
 
   $('openHowto').addEventListener('click',openHowto);
@@ -409,6 +415,7 @@
     try{await api('/api/challenge/action',{});}catch(e){tell(e.message);}
     finally{actionBusy=false;}
   });
+  window.bbApp={getNick:()=>nick,isAdmin:()=>admin,getSelectedNick:()=>selectedNick,getLink:()=>link,api,tell,popToast};
   setInterval(updateClock,100);
   showIdentity();boot();
 })();
